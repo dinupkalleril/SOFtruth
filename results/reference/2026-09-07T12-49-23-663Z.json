@@ -1,0 +1,234 @@
+{
+  "schemaVersion": "softruth/run/v1",
+  "specVersion": "transactional-email/v1",
+  "vendor": "reference",
+  "seed": "eed956adfdc2c732d473c49669fc08f8",
+  "inboxDomain": "send.softruth.com",
+  "bounceDomain": "bounce.softruth.com",
+  "startedAt": "2026-09-07T12:49:23.663Z",
+  "finishedAt": "2026-09-07T12:52:44.974Z",
+  "runsPerAssertion": 3,
+  "assertions": [
+    {
+      "assertionId": "send.accepts-valid",
+      "verdict": "PASS",
+      "passed": 3,
+      "total": 3,
+      "attempts": [
+        {
+          "assertionId": "send.accepts-valid",
+          "verdict": "PASS",
+          "reason": "http.202",
+          "detail": "accepted, messageId issued",
+          "measurements": {
+            "acceptMs": 398
+          },
+          "startedAt": "2026-09-07T12:49:23.664Z",
+          "elapsedMs": 398
+        },
+        {
+          "assertionId": "send.accepts-valid",
+          "verdict": "PASS",
+          "reason": "http.202",
+          "detail": "accepted, messageId issued",
+          "measurements": {
+            "acceptMs": 276
+          },
+          "startedAt": "2026-09-07T12:50:31.047Z",
+          "elapsedMs": 276
+        },
+        {
+          "assertionId": "send.accepts-valid",
+          "verdict": "PASS",
+          "reason": "http.202",
+          "detail": "accepted, messageId issued",
+          "measurements": {
+            "acceptMs": 291
+          },
+          "startedAt": "2026-09-07T12:51:37.870Z",
+          "elapsedMs": 291
+        }
+      ],
+      "measurements": {
+        "acceptMs": 321.67
+      }
+    },
+    {
+      "assertionId": "send.rejects-malformed",
+      "verdict": "PASS",
+      "passed": 3,
+      "total": 3,
+      "attempts": [
+        {
+          "assertionId": "send.rejects-malformed",
+          "verdict": "PASS",
+          "reason": "http.400",
+          "detail": "correctly rejected a send with no recipient",
+          "startedAt": "2026-09-07T12:49:24.062Z",
+          "elapsedMs": 122
+        },
+        {
+          "assertionId": "send.rejects-malformed",
+          "verdict": "PASS",
+          "reason": "http.400",
+          "detail": "correctly rejected a send with no recipient",
+          "startedAt": "2026-09-07T12:50:31.323Z",
+          "elapsedMs": 112
+        },
+        {
+          "assertionId": "send.rejects-malformed",
+          "verdict": "PASS",
+          "reason": "http.400",
+          "detail": "correctly rejected a send with no recipient",
+          "startedAt": "2026-09-07T12:51:38.161Z",
+          "elapsedMs": 126
+        }
+      ]
+    },
+    {
+      "assertionId": "delivery.arrives",
+      "verdict": "PASS",
+      "passed": 3,
+      "total": 3,
+      "attempts": [
+        {
+          "assertionId": "delivery.arrives",
+          "verdict": "PASS",
+          "reason": "inbox.received",
+          "detail": "nonce found in subject after 1.5s",
+          "startedAt": "2026-09-07T12:49:24.185Z",
+          "elapsedMs": 5817
+        },
+        {
+          "assertionId": "delivery.arrives",
+          "verdict": "PASS",
+          "reason": "inbox.received",
+          "detail": "nonce found in subject after 2.4s",
+          "startedAt": "2026-09-07T12:50:31.435Z",
+          "elapsedMs": 5560
+        },
+        {
+          "assertionId": "delivery.arrives",
+          "verdict": "PASS",
+          "reason": "inbox.received",
+          "detail": "nonce found in subject after 2.2s",
+          "startedAt": "2026-09-07T12:51:38.287Z",
+          "elapsedMs": 5572
+        }
+      ]
+    },
+    {
+      "assertionId": "delivery.latency",
+      "verdict": "PASS",
+      "passed": 3,
+      "total": 3,
+      "attempts": [
+        {
+          "assertionId": "delivery.latency",
+          "verdict": "PASS",
+          "reason": "measured",
+          "detail": "1.5s from accept to arrival",
+          "measurements": {
+            "deliverySeconds": 1.47
+          },
+          "startedAt": "2026-09-07T12:49:24.185Z",
+          "elapsedMs": 5817
+        },
+        {
+          "assertionId": "delivery.latency",
+          "verdict": "PASS",
+          "reason": "measured",
+          "detail": "2.4s from accept to arrival",
+          "measurements": {
+            "deliverySeconds": 2.41
+          },
+          "startedAt": "2026-09-07T12:50:31.435Z",
+          "elapsedMs": 5560
+        },
+        {
+          "assertionId": "delivery.latency",
+          "verdict": "PASS",
+          "reason": "measured",
+          "detail": "2.2s from accept to arrival",
+          "measurements": {
+            "deliverySeconds": 2.23
+          },
+          "startedAt": "2026-09-07T12:51:38.287Z",
+          "elapsedMs": 5572
+        }
+      ],
+      "measurements": {
+        "deliverySeconds": 2.04
+      }
+    },
+    {
+      "assertionId": "status.matches-reality",
+      "verdict": "PASS",
+      "passed": 3,
+      "total": 3,
+      "attempts": [
+        {
+          "assertionId": "status.matches-reality",
+          "verdict": "PASS",
+          "reason": "status.accurate",
+          "detail": "reported delivered and it arrived",
+          "startedAt": "2026-09-07T12:49:24.185Z",
+          "elapsedMs": 5817
+        },
+        {
+          "assertionId": "status.matches-reality",
+          "verdict": "PASS",
+          "reason": "status.accurate",
+          "detail": "reported delivered and it arrived",
+          "startedAt": "2026-09-07T12:50:31.435Z",
+          "elapsedMs": 5560
+        },
+        {
+          "assertionId": "status.matches-reality",
+          "verdict": "PASS",
+          "reason": "status.accurate",
+          "detail": "reported delivered and it arrived",
+          "startedAt": "2026-09-07T12:51:38.287Z",
+          "elapsedMs": 5572
+        }
+      ]
+    },
+    {
+      "assertionId": "bounce.reported",
+      "verdict": "INCONCLUSIVE",
+      "passed": 0,
+      "total": 3,
+      "attempts": [
+        {
+          "assertionId": "bounce.reported",
+          "verdict": "INCONCLUSIVE",
+          "reason": "bounce.still-pending",
+          "detail": "still \"sent\" after 60s; no outcome reported yet, so nothing is proven either way",
+          "startedAt": "2026-09-07T12:49:30.513Z",
+          "elapsedMs": 60533
+        },
+        {
+          "assertionId": "bounce.reported",
+          "verdict": "INCONCLUSIVE",
+          "reason": "bounce.still-pending",
+          "detail": "still \"sent\" after 60s; no outcome reported yet, so nothing is proven either way",
+          "startedAt": "2026-09-07T12:50:37.275Z",
+          "elapsedMs": 60595
+        },
+        {
+          "assertionId": "bounce.reported",
+          "verdict": "INCONCLUSIVE",
+          "reason": "bounce.still-pending",
+          "detail": "still \"sent\" after 60s; no outcome reported yet, so nothing is proven either way",
+          "startedAt": "2026-09-07T12:51:44.175Z",
+          "elapsedMs": 60798
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "workflowRunUrl": "https://github.com/dinupkalleril/SOFtruth/actions/runs/34123952617",
+    "commit": "d79c6a38f5ccb94e838770bf948314c0a72990e0",
+    "artifactDigest": ""
+  }
+}
