@@ -53,6 +53,18 @@ jobs:
           # One secret per vendor, named for the slug. Never echoed, never written
           # to the result file, never committed.
           SOFTRUTH_TOKEN_REFERENCE: ${{ secrets.SOFTRUTH_TOKEN_REFERENCE }}
+
+          # Without this the inbox falls through to UnconfiguredInbox and every
+          # delivery assertion reports INCONCLUSIVE. That is the correct behaviour
+          # (an assertion we cannot run must look unrunnable, never failed) but it
+          # silently produces a record that proves almost nothing, which is how the
+          # first CI run came back 2 passed and 4 inconclusive.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+
+          # The domain is recorded in every result, so CI and local runs must agree
+          # on it or the same vendor produces records that cannot be compared.
+          SOFTRUTH_INBOX_DOMAIN: ${{ vars.SOFTRUTH_INBOX_DOMAIN }}
+          SOFTRUTH_BOUNCE_DOMAIN: ${{ vars.SOFTRUTH_BOUNCE_DOMAIN }}
         run: bun run suite/run.ts --vendor "${{ inputs.vendor }}"
 
       - name: Attest the result
