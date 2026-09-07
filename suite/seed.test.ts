@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
+  DEFAULT_BOUNCE_DOMAIN,
   DEFAULT_INBOX_DOMAIN,
   generateBounceAddress,
   generateCase,
@@ -118,12 +119,15 @@ describe("domain resolution", () => {
     expect(resolveInboxDomain()).toBe("sft-inbox.mayin.me");
   });
 
-  test("bounce domain defaults to a subdomain of the inbox domain", () => {
-    // The null MX belongs on a subdomain, never on the domain that has to
-    // receive real mail.
-    process.env.SOFTRUTH_INBOX_DOMAIN = "sft-inbox.mayin.me";
+  test("bounce domain is independent of the inbox domain", () => {
+    // They need opposite DNS: the inbox receives, the bounce domain must reject
+    // everything. Deriving one from the other invites configuring them together,
+    // which would make mail to the bounce domain succeed and silently disable
+    // the assertion that depends on it failing.
+    process.env.SOFTRUTH_INBOX_DOMAIN = "inbox.example.com";
     delete process.env.SOFTRUTH_BOUNCE_DOMAIN;
-    expect(resolveBounceDomain()).toBe("bounce.sft-inbox.mayin.me");
+    expect(resolveBounceDomain()).toBe(DEFAULT_BOUNCE_DOMAIN);
+    expect(resolveBounceDomain()).not.toContain("inbox.example.com");
   });
 
   test("bounce domain can be overridden independently", () => {

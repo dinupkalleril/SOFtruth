@@ -91,27 +91,38 @@ Ordered, because some of these are one-way doors once a record exists.
       by **appending** a correction, never by deleting. Verdicts are never reversed
       on request.
 
-## 4b. Testing on a domain you already own
+## 4b. DNS layout
 
-You do not need the final domain to start. Point `SOFTRUTH_INBOX_DOMAIN` at a
-subdomain of something you already control, for example `sft-inbox.mayin.me`.
+Three subdomains of `softruth.com`, three different jobs. They must not collide.
 
-Two rules make this safe:
+| Subdomain | Job | DNS | Registered with the mail service? |
+|---|---|---|---|
+| `send.softruth.com` | The reference implementation sends test mail | DKIM TXT + SPF, values from the provider | Yes, as a **sending** domain |
+| `inbox.softruth.com` | SOFtruth receives and verifies arrival | MX → the provider's inbound servers | Yes, as an **inbound** domain |
+| `bounce.softruth.com` | Must hard-bounce everything | **Null MX only**: `. 0 MX 0 "."` | **Never.** See below |
 
-**Use a subdomain, never the apex.** If mail already flows to the parent domain,
-adding or changing MX records at the apex breaks it. A subdomain is isolated.
+**`bounce.softruth.com` must not be registered anywhere.** It exists to be
+undeliverable: `bounce.reported` checks whether a provider correctly detects a
+hard bounce, so if mail to it ever succeeds, that assertion silently stops
+testing anything while still reporting PASS. It is a sibling of the inbox domain,
+not a child, and `resolveBounceDomain()` deliberately does not derive it from the
+inbox domain, so nobody configures the two together by reflex.
+
+**Sending lives on a subdomain, not the apex.** Sending reputation attaches to
+the domain that sends. Keeping it on `send.` isolates the apex for the site and
+any future real mail.
+
+**Skip click and open tracking.** Tracking rewrites the message: link tracking
+replaces URLs, open tracking injects a pixel. For a harness whose job is
+confirming that the message which arrived is the message that was sent, that is a
+variable with no upside. Nonces are plain text in subject and body and would
+survive either, but there is nothing to gain from open rates on test mail.
 
 **Every record stores the domain it ran against.** `inboxDomain` and
 `bounceDomain` are written into each result, because a seed alone does not
 determine the addresses: it fixes the local-parts and the domain completes them.
-Without that, moving to the real domain later would silently break replay for
-every earlier record while the site still promised it.
-
-The one thing a borrowed domain must not do is reach a **published** record. Test
-addresses at a Mayin subdomain appearing in public results would connect SOFtruth
-to the GEO tool, which is exactly the entanglement the separate-brand decision
-exists to avoid. Fine for pre-launch runs, which stay local and carry no CI
-provenance. Move to the real domain before the first vendor record publishes.
+Without that, changing domains later would silently break replay for every
+earlier record while the site still promised it.
 
 ## 5. What is deliberately not implemented yet
 
