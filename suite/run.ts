@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { runAllAssertions } from "./assertions";
 import { collapseAttempts, requiresHumanReview, summarize } from "./classify";
 import { MemoryInbox, UnconfiguredInbox, type Inbox } from "./inbox";
+import { ResendInbox } from "./inbox-resend";
 import { generateBounceAddress, generateCase, newSeed, resolveBounceDomain, resolveInboxDomain } from "./seed";
 import type { AttemptResult, RunRecord, VendorTarget } from "./types";
 
@@ -61,9 +62,12 @@ async function loadVendor(slug: string): Promise<VendorTarget & { config: Vendor
 }
 
 /**
- * Choose the inbox. Absent a configured service we return UnconfiguredInbox,
- * which reports every delivery assertion as INCONCLUSIVE rather than silently
- * failing them. An unrunnable assertion must look unrunnable, not failed.
+ * Choose the inbox.
+ *
+ * Order matters. The explicit memory override comes first so a local smoke run
+ * cannot accidentally hit the real API, and the unconfigured fallback comes last
+ * so a missing key degrades to INCONCLUSIVE rather than to a failure. An
+ * assertion we cannot run must look unrunnable, never failed.
  */
 function selectInbox(): Inbox {
   if (process.env.SOFTRUTH_INBOX === "memory") {
@@ -71,6 +75,10 @@ function selectInbox(): Inbox {
     // actually sends mail, so a PASS here would be meaningless.
     return new MemoryInbox();
   }
+
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) return new ResendInbox(resendKey);
+
   return new UnconfiguredInbox();
 }
 

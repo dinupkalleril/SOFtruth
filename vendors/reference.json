@@ -1,6 +1,6 @@
 {
   "vendor": "reference",
-  "baseUrl": "https://reference.softruth.dev",
+  "baseUrl": "https://reference.softruth.com",
   "deliveryWindowSeconds": 300,
   "bounceWindowSeconds": 600,
   "_comment": [
