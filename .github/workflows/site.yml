@@ -1,0 +1,51 @@
+name: Build site
+
+# Builds the public record into static HTML.
+#
+# Deliberately does NOT deploy to GitHub Pages yet: Pages on a private repo needs
+# a paid plan, and this repo is private until the first vendor record (see
+# docs/repo-setup.md). Building and uploading an artifact works today on the free
+# tier, so the site stays continuously verified rather than rotting until launch.
+#
+# When the repo flips public, add the Pages deploy job documented in
+# docs/repo-setup.md. Nothing about the build changes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "results/**"
+      - "site/**"
+      - "mcp/registry.ts"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+
+      - name: Verify the render rules before publishing anything
+        # The site and the MCP server share their verdict logic. If a human and
+        # an assistant could show different answers about the same product, the
+        # record is worthless, so the tests that pin that agreement gate the build.
+        run: bun test site/ mcp/
+
+      - name: Build
+        run: bun run site/build.ts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site/dist
+          retention-days: 30

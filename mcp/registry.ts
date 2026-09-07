@@ -80,6 +80,34 @@ export async function loadLatestRecords(options: LoadOptions = {}): Promise<Vend
 }
 
 /**
+ * Every record for one vendor, newest first.
+ *
+ * Used by the site's per-product timeline. The index and the MCP server both use
+ * `loadLatestRecords` instead, so all three surfaces agree on what "current"
+ * means rather than each deciding for itself.
+ */
+export async function loadVendorHistory(vendor: string, options: LoadOptions = {}): Promise<RunRecord[]> {
+  const resultsDir = options.resultsDir ?? "results";
+  const dir = join(resultsDir, vendor);
+
+  const files = (await readdir(dir).catch(() => []))
+    .filter((f) => f.endsWith(".json") && !f.endsWith(".attestation.json"))
+    .sort()
+    .reverse();
+
+  const records: RunRecord[] = [];
+  for (const file of files) {
+    try {
+      const parsed: RunRecord = JSON.parse(await readFile(join(dir, file), "utf-8"));
+      if (!Number.isNaN(Date.parse(parsed.finishedAt))) records.push(parsed);
+    } catch {
+      continue; // Skip rather than guess. Same rule as loadLatestRecords.
+    }
+  }
+  return records;
+}
+
+/**
  * The verdict as an agent should see it.
  *
  * Decay applies only to PASS. A stale FAIL stays a FAIL: the product was
