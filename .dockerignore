@@ -1,0 +1,10 @@
+node_modules
+.git
+.env
+.env.*
+results
+site/dist
+suite
+mcp
+scripts
+docs
