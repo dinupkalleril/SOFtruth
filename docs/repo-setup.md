@@ -54,11 +54,14 @@ gh api -X PUT repos/:owner/:repo/rulesets --input - <<'JSON'
 JSON
 ```
 
-`required_approving_review_count` is 0 because a solo operator cannot approve
-their own PR under GitHub's rules. The review gate is therefore procedural rather
-than mechanical right now: **you read the artifacts before merging a FAIL.** When
-a second person exists, raise this to 1 and the gate becomes enforced rather than
-promised. Until then, do not describe it publicly as enforced.
+`required_approving_review_count` is 0 for now. GitHub does not let an author
+approve their own pull request, so with a single maintainer a non-zero value would
+block every merge. The review gate is therefore procedural at this size: the
+artifacts get read before a FAIL is merged.
+
+Raise this to 1 as soon as a second maintainer exists, at which point the gate is
+enforced by the platform rather than by discipline. Until then the project does not
+claim it is enforced, and neither should any description of it.
 
 ## 3. Secrets
 

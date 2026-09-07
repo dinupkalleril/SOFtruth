@@ -50,12 +50,12 @@ scripts/                   operational probes
 
 ## Status
 
-Pre-validation. Nothing is published yet and no provider has been tested.
+Early. The only entry in the register is SOFtruth's own reference implementation,
+disclosed as ours rather than a third party, and no provider has paid for a result.
 
-The project is gated on a committed kill condition: by **30 September 2026**, after
-conversations with at least five people fitting the buyer profile, if fewer than two
-will pay $99/month on terms that include permanent publication of their failures, the
-project closes.
+The record says what it is: every entry carries the seed that replays it, the domain
+it ran against, and a link to the CI run that produced it. An entry without CI
+provenance labels itself as not evidence.
 
 ## Running the egress probe
 
