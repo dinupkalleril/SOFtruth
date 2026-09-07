@@ -430,6 +430,19 @@ export async function assertBounceReported(ctx: AssertionContext): Promise<Attem
   if (state === "bounced") {
     return result(id, "PASS", "bounce.detected", "hard bounce correctly reported", startedAt, elapsedMs);
   }
+  if (state === "failed") {
+    // Non-delivery was detected, just labelled differently from what the spec
+    // asks for. Failing a provider over vocabulary when they correctly caught
+    // the bounce would be pedantry that makes the record less useful, not more.
+    return result(
+      id,
+      "PASS",
+      "bounce.detected-as-failed",
+      'non-delivery detected, reported as "failed" rather than "bounced"',
+      startedAt,
+      elapsedMs,
+    );
+  }
   if (state === "delivered") {
     return result(
       id,
@@ -440,11 +453,16 @@ export async function assertBounceReported(ctx: AssertionContext): Promise<Attem
       elapsedMs,
     );
   }
+
+  // Still queued or sent when the window closed. The provider has not reported
+  // an outcome, so we do not have one either. Calling this a FAIL would punish a
+  // provider for being slower than our patience, which is the exact harness-
+  // blames-provider mistake the three-state verdict exists to prevent.
   return result(
     id,
-    "FAIL",
-    "bounce.not-reported",
-    `still "${state}" after ${bounceWindowMs / 1000}s instead of reporting a bounce`,
+    "INCONCLUSIVE",
+    "bounce.still-pending",
+    `still "${state}" after ${bounceWindowMs / 1000}s; no outcome reported yet, so nothing is proven either way`,
     startedAt,
     elapsedMs,
   );

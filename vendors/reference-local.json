@@ -1,0 +1,11 @@
+{
+  "vendor": "reference-local",
+  "baseUrl": "http://localhost:8787",
+  "deliveryWindowSeconds": 60,
+  "bounceWindowSeconds": 90,
+  "_comment": [
+    "Local-only target for running the suite against the reference implementation",
+    "on this machine. Produces a record with no CI provenance, which the site and",
+    "the MCP server both label NOT INDEPENDENTLY PRODUCED. Not evidence, by design."
+  ]
+}

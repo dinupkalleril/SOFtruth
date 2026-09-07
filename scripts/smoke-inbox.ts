@@ -50,7 +50,7 @@ if (!response.ok) {
 }
 
 console.log(`sent in ${Date.now() - sendStarted}ms: ${body.slice(0, 120)}\n`);
-console.log("waiting for it to come back through inbox.softruth.com ...");
+console.log(`waiting for it to come back through ${resolveInboxDomain()} ...`);
 
 const inbox = new ResendInbox(apiKey);
 const result = await inbox.awaitMessage(testCase.to, testCase.nonce, waitSeconds * 1000);

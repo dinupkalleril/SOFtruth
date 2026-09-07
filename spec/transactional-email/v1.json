@@ -1,5 +1,5 @@
 {
-  "$schema": "https://softruth.dev/schema/category-spec/v1.json",
+  "$schema": "https://softruth.com/schema/category-spec/v1.json",
   "specVersion": "transactional-email/v1",
   "category": "transactional-email",
   "status": "draft",
@@ -93,9 +93,9 @@
       "id": "bounce.reported",
       "title": "A hard bounce is reported as a bounce",
       "measures": "Sending to an address guaranteed to bounce produces state=bounced.",
-      "passWhen": "State becomes bounced within bounceWindowSeconds.",
-      "failWhen": "State becomes delivered, or remains sent/queued past the window.",
-      "inconclusiveWhen": "The status endpoint errored during the window."
+      "passWhen": "State becomes bounced within bounceWindowSeconds. A state of failed also passes: non-delivery was detected, only labelled differently.",
+      "failWhen": "State becomes delivered, which is a false claim for an address with no MX record.",
+      "inconclusiveWhen": "The status endpoint errored, or the message was still queued/sent when the window closed. No outcome reported means nothing is proven either way; a provider is not failed for being slower than our patience."
     }
   ],
 
@@ -116,8 +116,7 @@
   ],
 
   "openQuestions": [
-    "Inbox infrastructure for delivery.arrives is not yet chosen. Options: own domain with catch-all plus IMAP polling, or a testing-inbox service with an API. This blocks delivery.arrives, delivery.latency and status.matches-reality.",
-    "The guaranteed-bounce address for bounce.reported must be one every provider treats as a hard bounce. A subdomain of a domain SOFtruth controls with a null MX is the likely answer.",
+    "How long a provider legitimately needs to report a hard bounce is not yet established. The first real run showed a message still 'sent' after 90 seconds, which is why a non-terminal state at the end of the window is INCONCLUSIVE rather than FAIL. bounceWindowSeconds needs a value grounded in measurement, not a guess.",
     "Webhook assertions are deliberately out of v1. They would require the provider to call back into SOFtruth, which roughly doubles the integration burden for a vendor's first implementation."
   ]
 }

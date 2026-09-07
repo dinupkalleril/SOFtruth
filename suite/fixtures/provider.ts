@@ -24,6 +24,8 @@ export interface FixtureDefects {
   claimsFailedButDelivers?: boolean;
   /** Report "delivered" for the null-MX bounce address. */
   neverReportsBounce?: boolean;
+  /** Detect non-delivery but label it "failed" instead of "bounced". */
+  reportsBounceAsFailed?: boolean;
   /** Always 429, to prove rate limiting resolves to INCONCLUSIVE. */
   alwaysRateLimited?: boolean;
   /** Always 503, to prove a provider outage resolves to INCONCLUSIVE. */
@@ -123,7 +125,11 @@ export function startFixtureProvider(inbox: MemoryInbox, defects: FixtureDefects
     if (isBounceAddress) {
       messages.set(messageId, {
         to,
-        state: defects.neverReportsBounce ? "delivered" : "bounced",
+        state: defects.neverReportsBounce
+          ? "delivered"
+          : defects.reportsBounceAsFailed
+            ? "failed"
+            : "bounced",
         updatedAt: new Date().toISOString(),
       });
       return Response.json({ messageId }, { status: 202 });

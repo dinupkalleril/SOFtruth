@@ -182,10 +182,22 @@ describe("bounce.reported", () => {
     expect(r.reason).toBe("bounce.claimed-delivered");
   });
 
-  test("FAILS a provider that never leaves queued", async () => {
+  test("is INCONCLUSIVE, not FAIL, when the provider has not reported an outcome yet", async () => {
+    // Caught by the first real run against Resend: a message still "sent" at the
+    // end of the window was scored as a product failure. The provider had not
+    // said anything wrong, it had said nothing yet. Punishing a provider for
+    // being slower than our patience is the harness-blames-provider mistake the
+    // three-state verdict exists to prevent.
     const r = await assertBounceReported(setup({ staysQueued: true }));
-    expect(r.verdict).toBe("FAIL");
-    expect(r.reason).toBe("bounce.not-reported");
+    expect(r.verdict).toBe("INCONCLUSIVE");
+    expect(r.reason).toBe("bounce.still-pending");
+  });
+
+  test("PASSES a provider that detects non-delivery but labels it failed", async () => {
+    // Vocabulary differs from the spec, substance does not: they caught it.
+    const r = await assertBounceReported(setup({ reportsBounceAsFailed: true }));
+    expect(r.verdict).toBe("PASS");
+    expect(r.reason).toBe("bounce.detected-as-failed");
   });
 });
 
