@@ -103,8 +103,11 @@ function measurementText(assertion: AssertionResult): string {
 /** Warning shown when a record has no CI provenance, i.e. it is not evidence. */
 function provenanceNote(record: RunRecord): string {
   if (record.provenance?.workflowRunUrl) {
+    // Seed and domain together, not seed alone: the seed determines local-parts
+    // and the domain completes the addresses, so replay is ambiguous without both.
     return `<p class="note">Produced by <a href="${esc(record.provenance.workflowRunUrl)}">this CI run</a>.
-      Seed <code>${esc(record.seed)}</code> replays the exact inputs.</p>`;
+      Replay with seed <code>${esc(record.seed)}</code> against
+      <code>${esc(record.inboxDomain ?? "unrecorded")}</code>.</p>`;
   }
   return `<p class="note warn"><strong>Not independently produced.</strong> This record has no CI
     provenance, so it was generated locally and is not evidence. Treat it as unverified.</p>`;

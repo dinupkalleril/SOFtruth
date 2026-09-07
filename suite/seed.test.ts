@@ -1,5 +1,12 @@
-import { describe, expect, test } from "bun:test";
-import { DEFAULT_INBOX_DOMAIN, generateBounceAddress, generateCase, newSeed } from "./seed";
+import { afterEach, describe, expect, test } from "bun:test";
+import {
+  DEFAULT_INBOX_DOMAIN,
+  generateBounceAddress,
+  generateCase,
+  newSeed,
+  resolveBounceDomain,
+  resolveInboxDomain,
+} from "./seed";
 
 describe("generateCase", () => {
   test("is deterministic: same seed and index always give the same case", () => {
@@ -89,5 +96,52 @@ describe("newSeed", () => {
   test("does not repeat", () => {
     const seeds = new Set(Array.from({ length: 200 }, () => newSeed()));
     expect(seeds.size).toBe(200);
+  });
+});
+
+describe("domain resolution", () => {
+  const saved = { inbox: process.env.SOFTRUTH_INBOX_DOMAIN, bounce: process.env.SOFTRUTH_BOUNCE_DOMAIN };
+  afterEach(() => {
+    process.env.SOFTRUTH_INBOX_DOMAIN = saved.inbox;
+    process.env.SOFTRUTH_BOUNCE_DOMAIN = saved.bounce;
+    if (saved.inbox === undefined) delete process.env.SOFTRUTH_INBOX_DOMAIN;
+    if (saved.bounce === undefined) delete process.env.SOFTRUTH_BOUNCE_DOMAIN;
+  });
+
+  test("falls back to the default when nothing is configured", () => {
+    delete process.env.SOFTRUTH_INBOX_DOMAIN;
+    expect(resolveInboxDomain()).toBe(DEFAULT_INBOX_DOMAIN);
+  });
+
+  test("honours an override, so a domain you already own can be used first", () => {
+    process.env.SOFTRUTH_INBOX_DOMAIN = "sft-inbox.mayin.me";
+    expect(resolveInboxDomain()).toBe("sft-inbox.mayin.me");
+  });
+
+  test("bounce domain defaults to a subdomain of the inbox domain", () => {
+    // The null MX belongs on a subdomain, never on the domain that has to
+    // receive real mail.
+    process.env.SOFTRUTH_INBOX_DOMAIN = "sft-inbox.mayin.me";
+    delete process.env.SOFTRUTH_BOUNCE_DOMAIN;
+    expect(resolveBounceDomain()).toBe("bounce.sft-inbox.mayin.me");
+  });
+
+  test("bounce domain can be overridden independently", () => {
+    process.env.SOFTRUTH_BOUNCE_DOMAIN = "nx.example.invalid";
+    expect(resolveBounceDomain()).toBe("nx.example.invalid");
+  });
+
+  test("an empty env var falls back rather than producing addresses with no domain", () => {
+    process.env.SOFTRUTH_INBOX_DOMAIN = "";
+    expect(resolveInboxDomain()).toBe(DEFAULT_INBOX_DOMAIN);
+  });
+
+  test("changing the domain changes the addresses for the same seed", () => {
+    // Exactly why the domain is recorded in every RunRecord: the seed alone
+    // does not determine the address.
+    const a = generateCase("same-seed", 0, "one.example.com");
+    const b = generateCase("same-seed", 0, "two.example.com");
+    expect(a.to).not.toBe(b.to);
+    expect(a.nonce).toBe(b.nonce);
   });
 });

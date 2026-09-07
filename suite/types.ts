@@ -41,6 +41,16 @@ export interface RunRecord {
   vendor: string;
   /** Published so anyone can reproduce the exact inputs this run used. */
   seed: string;
+  /**
+   * The inbox domain in effect for this run.
+   *
+   * Recorded because the seed alone does not determine the addresses: it
+   * determines the local-parts, and the domain completes them. Without this,
+   * changing domains would silently break replay for every earlier record.
+   */
+  inboxDomain: string;
+  /** The null-MX domain bounce probes were sent to, for the same reason. */
+  bounceDomain: string;
   startedAt: string;
   finishedAt: string;
   runsPerAssertion: number;

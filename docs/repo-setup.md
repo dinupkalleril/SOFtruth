@@ -78,9 +78,10 @@ Ordered, because some of these are one-way doors once a record exists.
 
 - [ ] Repo is public (see 1).
 - [ ] Branch ruleset applied (see 2).
-- [ ] The domain in `suite/seed.ts` (`DEFAULT_INBOX_DOMAIN`) is registered and its
-      MX records point at the chosen inbox service.
-- [ ] The `bounce.` subdomain has a **null MX** record (`. 0 MX 0 "."`), so every
+- [ ] `SOFTRUTH_INBOX_DOMAIN` is set and its MX records point at the chosen inbox
+      service. **Use a subdomain, never the apex** of a domain that already
+      receives mail: changing apex MX records breaks existing email.
+- [ ] `SOFTRUTH_BOUNCE_DOMAIN` has a **null MX** record (`. 0 MX 0 "."`), so every
       provider sees the same hard bounce.
 - [ ] An inbox service is chosen and implemented behind the `Inbox` interface.
       Until then `UnconfiguredInbox` reports every delivery assertion as
@@ -89,6 +90,28 @@ Ordered, because some of these are one-way doors once a record exists.
 - [ ] A written correction policy exists: harness and factual errors are corrected
       by **appending** a correction, never by deleting. Verdicts are never reversed
       on request.
+
+## 4b. Testing on a domain you already own
+
+You do not need the final domain to start. Point `SOFTRUTH_INBOX_DOMAIN` at a
+subdomain of something you already control, for example `sft-inbox.mayin.me`.
+
+Two rules make this safe:
+
+**Use a subdomain, never the apex.** If mail already flows to the parent domain,
+adding or changing MX records at the apex breaks it. A subdomain is isolated.
+
+**Every record stores the domain it ran against.** `inboxDomain` and
+`bounceDomain` are written into each result, because a seed alone does not
+determine the addresses: it fixes the local-parts and the domain completes them.
+Without that, moving to the real domain later would silently break replay for
+every earlier record while the site still promised it.
+
+The one thing a borrowed domain must not do is reach a **published** record. Test
+addresses at a Mayin subdomain appearing in public results would connect SOFtruth
+to the GEO tool, which is exactly the entanglement the separate-brand decision
+exists to avoid. Fine for pre-launch runs, which stay local and carry no CI
+provenance. Move to the real domain before the first vendor record publishes.
 
 ## 5. What is deliberately not implemented yet
 

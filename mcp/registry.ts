@@ -128,7 +128,11 @@ export function describeRecord(record: VendorRecord, windowDays = DEFAULT_FRESHN
   lines.push(`## ${record.vendor}`);
   lines.push(`Spec: ${record.latest.specVersion}`);
   lines.push(`Last verified: ${record.latest.finishedAt.slice(0, 10)} (${age} day${age === 1 ? "" : "s"} ago)`);
+  // Seed AND domain: the seed determines the local-parts, the domain completes
+  // the addresses. Publishing only the seed would make replay ambiguous the
+  // first time the domain changes.
   lines.push(`Seed (replay this exact run): ${record.latest.seed}`);
+  lines.push(`Inbox domain at time of run: ${record.latest.inboxDomain ?? "unrecorded"}`);
 
   if (record.stale) {
     lines.push(

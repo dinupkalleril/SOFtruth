@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { runAllAssertions } from "./assertions";
 import { collapseAttempts, requiresHumanReview, summarize } from "./classify";
 import { MemoryInbox, UnconfiguredInbox, type Inbox } from "./inbox";
-import { generateBounceAddress, generateCase, newSeed } from "./seed";
+import { generateBounceAddress, generateCase, newSeed, resolveBounceDomain, resolveInboxDomain } from "./seed";
 import type { AttemptResult, RunRecord, VendorTarget } from "./types";
 
 const SPEC_VERSION = "transactional-email/v1";
@@ -79,10 +79,13 @@ async function main(): Promise<void> {
   const target = await loadVendor(slug);
   const inbox = selectInbox();
   const seed = newSeed();
+  const inboxDomain = resolveInboxDomain();
+  const bounceDomain = resolveBounceDomain();
   const startedAt = new Date().toISOString();
 
   console.log(`SOFtruth ${SPEC_VERSION}`);
   console.log(`vendor: ${target.vendor}  seed: ${seed}  inbox: ${inbox.kind}`);
+  console.log(`inbox domain: ${inboxDomain}  bounce domain: ${bounceDomain}`);
   console.log(`runs per assertion: ${RUNS_PER_ASSERTION}\n`);
 
   if (inbox.kind === "unconfigured") {
@@ -96,9 +99,9 @@ async function main(): Promise<void> {
   for (let run = 0; run < RUNS_PER_ASSERTION; run++) {
     const results = await runAllAssertions({
       target,
-      testCase: generateCase(seed, run),
+      testCase: generateCase(seed, run, inboxDomain),
       inbox,
-      bounceAddress: generateBounceAddress(seed, run),
+      bounceAddress: generateBounceAddress(seed, run, bounceDomain),
       deliveryWindowMs: (target.config.deliveryWindowSeconds ?? 300) * 1000,
       bounceWindowMs: (target.config.bounceWindowSeconds ?? 600) * 1000,
     });
@@ -118,6 +121,8 @@ async function main(): Promise<void> {
     specVersion: SPEC_VERSION,
     vendor: target.vendor,
     seed,
+    inboxDomain,
+    bounceDomain,
     startedAt,
     finishedAt: new Date().toISOString(),
     runsPerAssertion: RUNS_PER_ASSERTION,

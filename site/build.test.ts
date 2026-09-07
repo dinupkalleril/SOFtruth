@@ -19,6 +19,8 @@ function record(overrides: Partial<RunRecord> = {}): RunRecord {
     specVersion: "transactional-email/v1",
     vendor: "acme",
     seed: "deadbeef",
+    inboxDomain: "inbox.example.com",
+    bounceDomain: "bounce.inbox.example.com",
     startedAt: "2026-09-01T00:00:00.000Z",
     finishedAt: "2026-09-01T00:05:00.000Z",
     runsPerAssertion: 3,
