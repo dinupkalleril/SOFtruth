@@ -5,3 +5,9 @@ node_modules/
 *.log
 .DS_Store
 site/dist/
+
+# Local run output. results/ is the published register and its integrity rests on
+# every record being CI-produced and attested; a locally-generated record sitting
+# there would erode that even though the site and MCP server both label it
+# NOT INDEPENDENTLY PRODUCED. Vendor slugs ending in -local never get committed.
+results/*-local/
