@@ -81,8 +81,8 @@ Ordered, because some of these are one-way doors once a record exists.
 - [ ] `SOFTRUTH_INBOX_DOMAIN` is set and its MX records point at the chosen inbox
       service. **Use a subdomain, never the apex** of a domain that already
       receives mail: changing apex MX records breaks existing email.
-- [ ] `SOFTRUTH_BOUNCE_DOMAIN` has a **null MX** record (`. 0 MX 0 "."`), so every
-      provider sees the same hard bounce.
+- [ ] `SOFTRUTH_BOUNCE_DOMAIN` resolves to NXDOMAIN (no records, no wildcard on
+      the parent), so every provider sees the same hard bounce.
 - [ ] An inbox service is chosen and implemented behind the `Inbox` interface.
       Until then `UnconfiguredInbox` reports every delivery assertion as
       INCONCLUSIVE, which is correct: unrunnable must look unrunnable, never failed.
@@ -99,14 +99,23 @@ Three subdomains of `softruth.com`, three different jobs. They must not collide.
 |---|---|---|---|
 | `send.softruth.com` | The reference implementation sends test mail | DKIM TXT + SPF, values from the provider | Yes, as a **sending** domain |
 | `inbox.softruth.com` | SOFtruth receives and verifies arrival | MX → the provider's inbound servers | Yes, as an **inbound** domain |
-| `bounce.softruth.com` | Must hard-bounce everything | **Null MX only**: `. 0 MX 0 "."` | **Never.** See below |
+| `bounce.softruth.com` | Must hard-bounce everything | **No records at all** | **Never.** See below |
 
-**`bounce.softruth.com` must not be registered anywhere.** It exists to be
-undeliverable: `bounce.reported` checks whether a provider correctly detects a
-hard bounce, so if mail to it ever succeeds, that assertion silently stops
-testing anything while still reporting PASS. It is a sibling of the inbox domain,
-not a child, and `resolveBounceDomain()` deliberately does not derive it from the
-inbox domain, so nobody configures the two together by reflex.
+**`bounce.softruth.com` needs no DNS records at all.** A subdomain with no MX
+and no A record produces NXDOMAIN, which every provider treats as a hard bounce.
+That is simpler and more robust than a null MX, which some registrars refuse to
+accept. Verified 2026-09-07 that `softruth.com` has no wildcard record (a nonsense
+subdomain returns NXDOMAIN), so nothing resolves here by accident.
+
+**If a wildcard is ever added to `softruth.com`, this breaks silently.** A
+wildcard would give `bounce.softruth.com` an A record, mail servers would fall
+back to it as an implicit MX, delivery would succeed, and `bounce.reported` would
+stop testing anything while still reporting PASS. Re-probe for a wildcard before
+trusting a bounce result after any DNS change.
+
+It is a sibling of the inbox domain, not a child, and `resolveBounceDomain()`
+deliberately does not derive it from the inbox domain, so nobody configures the
+two together by reflex.
 
 **Sending lives on a subdomain, not the apex.** Sending reputation attaches to
 the domain that sends. Keeping it on `send.` isolates the apex for the site and
