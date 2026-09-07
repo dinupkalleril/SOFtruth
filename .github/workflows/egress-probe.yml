@@ -1,0 +1,45 @@
+name: Egress probe
+
+# T1 — can a GitHub-hosted runner reach vendor APIs at all?
+#
+# Shared runner IPs are a plausible blocker for API-first testing: WAFs and bot
+# detection see a cloud IP range, not a customer. If vendors block us here, every
+# test result would be a permanent INCONCLUSIVE and the architecture has to change.
+#
+# Compare this run against a local run (`bun run scripts/egress-probe.ts`) from a
+# residential IP. Same verdicts => runner IPs are fine. Different => runner-specific
+# blocking, which is the finding.
+#
+# Never gates anything. It reports a fact.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly. Vendor edge configuration changes without telling anyone, and a
+    # block that appears in month three would otherwise surface as a mystery
+    # INCONCLUSIVE on a paying vendor's record.
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+
+      - name: Probe vendor API reachability
+        run: bun run scripts/egress-probe.ts
+
+      - name: Record the runner's public IP
+        # Useful when a vendor asks "which IP do we allowlist" and when
+        # diagnosing whether a block correlates with a particular range.
+        run: |
+          echo "runner public IP: $(curl -fsS --max-time 10 https://api.ipify.org || echo unavailable)"
