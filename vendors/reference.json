@@ -1,0 +1,14 @@
+{
+  "vendor": "reference",
+  "baseUrl": "https://reference.softruth.dev",
+  "deliveryWindowSeconds": 300,
+  "bounceWindowSeconds": 600,
+  "_comment": [
+    "Vendor config is committed; the bearer token never is. The token comes from",
+    "SOFTRUTH_TOKEN_REFERENCE in the environment (a GitHub Actions secret in CI).",
+    "This repo is public and permanent, so a token committed here could not be",
+    "unpublished, only rotated.",
+    "",
+    "baseUrl is a placeholder until the reference implementation is deployed."
+  ]
+}
