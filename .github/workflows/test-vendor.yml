@@ -76,7 +76,7 @@ jobs:
         uses: actions/attest@v3
         with:
           subject-path: ${{ steps.suite.outputs.result_path }}
-          predicate-type: https://softruth.dev/predicate/run/v1
+          predicate-type: https://softruth.com/predicate/run/v1
           predicate: '{"specVersion":"transactional-email/v1","seed":"${{ steps.suite.outputs.seed }}"}'
 
       - name: Record the attestation alongside the result
@@ -110,7 +110,7 @@ jobs:
           set -euo pipefail
           BRANCH="result/${VENDOR}-${GITHUB_RUN_ID}"
           git config user.name "softruth-ci"
-          git config user.email "ci@softruth.dev"
+          git config user.email "ci@softruth.com"
           git checkout -b "$BRANCH"
           git add results/
           git commit -m "result(${VENDOR}): ${SUMMARY}"

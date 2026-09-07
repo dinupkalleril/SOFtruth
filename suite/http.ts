@@ -63,7 +63,7 @@ export async function request(options: RequestOptions): Promise<HttpOutcome> {
       signal: controller.signal,
       headers: {
         Authorization: `Bearer ${options.token}`,
-        "User-Agent": "SOFtruth/1.0 (+https://softruth.dev)",
+        "User-Agent": "SOFtruth/1.0 (+https://softruth.com)",
         ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
