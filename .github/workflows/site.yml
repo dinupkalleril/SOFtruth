@@ -2,13 +2,9 @@ name: Build site
 
 # Builds the public record into static HTML.
 #
-# Deliberately does NOT deploy to GitHub Pages yet: Pages on a private repo needs
-# a paid plan, and this repo is private until the first vendor record (see
-# docs/repo-setup.md). Building and uploading an artifact works today on the free
-# tier, so the site stays continuously verified rather than rotting until launch.
-#
-# When the repo flips public, add the Pages deploy job documented in
-# docs/repo-setup.md. Nothing about the build changes.
+# Builds and publishes to GitHub Pages. The published site is the only thing a
+# non-technical reader can look at: everything else in this repo is code, an API,
+# or a JSON record.
 
 on:
   push:
@@ -22,6 +18,14 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  # One deploy at a time; a newer build should win rather than queue behind an
+  # older one that is about to be wrong.
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -44,8 +48,18 @@ jobs:
       - name: Build
         run: bun run site/build.ts
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
         with:
-          name: site
           path: site/dist
-          retention-days: 30
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
