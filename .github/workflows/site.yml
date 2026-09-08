@@ -10,7 +10,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "results/**"
+      - "explorations/**"
       - "site/**"
       - "mcp/registry.ts"
       - ".github/workflows/site.yml"
@@ -43,7 +43,7 @@ jobs:
         # The site and the MCP server share their verdict logic. If a human and
         # an assistant could show different answers about the same product, the
         # record is worthless, so the tests that pin that agreement gate the build.
-        run: bun test site/ mcp/
+        run: bun test site/ mcp/ suite/
 
       - name: Build
         run: bun run site/build.ts

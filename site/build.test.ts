@@ -1,162 +1,154 @@
 import { describe, expect, test } from "bun:test";
-import { esc, renderIndex, renderVendor } from "./build";
-import { reportedVerdict } from "../mcp/registry";
-import type { AssertionResult, RunRecord } from "../suite/types";
-import type { VendorRecord } from "../mcp/registry";
+import { esc, renderAccount, renderIndex } from "./build";
+import { readerGuidance, type ProductRecord } from "../mcp/registry";
+import type { AgentAccount, ExplorationRecord } from "../agent/types";
 
-function assertion(
-  id: string,
-  verdict: AssertionResult["verdict"],
-  passed = 3,
-  detail?: Record<string, number>,
-): AssertionResult {
-  return { assertionId: id, verdict, passed, total: 3, attempts: [], measurements: detail };
-}
-
-function record(overrides: Partial<RunRecord> = {}): RunRecord {
+function account(overrides: Partial<AgentAccount> = {}): AgentAccount {
   return {
-    schemaVersion: "softruth/run/v1",
-    specVersion: "transactional-email/v1",
-    vendor: "acme",
-    seed: "deadbeef",
-    inboxDomain: "inbox.example.com",
-    bounceDomain: "bounce.inbox.example.com",
-    startedAt: "2026-09-01T00:00:00.000Z",
-    finishedAt: "2026-09-01T00:05:00.000Z",
-    runsPerAssertion: 3,
-    assertions: [assertion("send.accepts-valid", "PASS")],
+    couldSignUp: true,
+    couldUseCoreFeature: true,
+    whatItDoes: "Sends transactional email over an API.",
+    gettingStarted: "Two screens and a verification email.",
+    worked: ["API key issued immediately"],
+    didNotWork: [],
+    unverifiedClaims: ["99.9% deliverability"],
+    bottomLine: "Got in and sent a message within four minutes.",
+    confidence: 8,
+    confidenceReason: "Completed signup and used the core feature.",
     ...overrides,
   };
 }
 
-function vendorRecord(overrides: Partial<VendorRecord> = {}): VendorRecord {
-  return { vendor: "acme", latest: record(), ageDays: 3, stale: false, ...overrides };
+function record(overrides: Partial<ExplorationRecord> = {}): ExplorationRecord {
+  return {
+    schemaVersion: "softruth/exploration/v1",
+    product: { slug: "acme", name: "Acme Mail", url: "https://acme.example" },
+    seed: "deadbeef",
+    inboxDomain: "send.softruth.com",
+    startedAt: "2026-09-08T10:00:00.000Z",
+    finishedAt: "2026-09-08T10:06:00.000Z",
+    evidence: {
+      steps: [],
+      email: { address: "agent-x@send.softruth.com", nonce: "n", arrived: true, secondsToArrive: 12 },
+      totalSeconds: 360,
+    },
+    account: account(),
+    agent: { model: "claude-sonnet-5", readPageContent: true },
+    ...overrides,
+  };
 }
 
-describe("empty registry", () => {
-  test("says nothing has been tested, and forbids inferring from absence", () => {
+function productRecord(overrides: Partial<ProductRecord> = {}): ProductRecord {
+  return { slug: "acme", latest: record(), ageDays: 1, stale: false, ...overrides };
+}
+
+describe("empty register", () => {
+  test("says nothing has been used and forbids inferring from absence", () => {
     const html = renderIndex([]);
-    expect(html).toContain("No products have been tested yet");
-    expect(html).toContain("does not mean products are");
+    expect(html).toContain("No products have been used yet");
+    expect(html).toContain("does not mean products are untrustworthy");
   });
 });
 
-describe("escaping — provider-controlled content is untrusted input", () => {
-  test("escapes angle brackets, quotes and ampersands", () => {
+describe("escaping — the account is untrusted input", () => {
+  test("escapes the dangerous characters", () => {
     expect(esc(`<script>alert("x")&'`)).toBe("&lt;script&gt;alert(&quot;x&quot;)&amp;&#39;");
   });
 
-  test("a vendor name containing markup cannot inject into the index", () => {
-    const html = renderIndex([vendorRecord({ vendor: '<img src=x onerror="alert(1)">' })]);
+  test("markup in the agent's bottom line cannot inject into the index", () => {
+    // The account is written by an agent that read pages controlled by the
+    // product's owner. Treat every word of it as hostile input.
+    const r = productRecord({ latest: record({ account: account({ bottomLine: '<img src=x onerror="alert(1)">' }) }) });
+    const html = renderIndex([r]);
     expect(html).not.toContain("<img src=x");
     expect(html).toContain("&lt;img src=x");
   });
 
-  test("an assertion id containing markup cannot inject into a product page", () => {
-    // Assertion ids and details can carry text a provider returned to us, which
-    // makes them input from the party with the most motive to manipulate readers.
-    const latest = record({ assertions: [assertion('<svg onload="alert(1)">', "FAIL", 0)] });
-    const html = renderVendor("acme", [latest], false);
+  test("markup in a worked/didNotWork item cannot inject into the product page", () => {
+    const r = productRecord({ latest: record({ account: account({ didNotWork: ['<svg onload="alert(1)">'] }) }) });
+    const html = renderAccount(r, [r.latest]);
     expect(html).not.toContain("<svg onload");
-    expect(html).toContain("&lt;svg onload");
   });
 
-  test("a malicious CI url cannot break out of the href attribute", () => {
-    const latest = record({
-      provenance: { workflowRunUrl: '"><script>alert(1)</script>', commit: "a", artifactDigest: "b" },
+  test("a malicious product URL cannot break out of the href", () => {
+    const r = productRecord({
+      latest: record({ product: { slug: "a", name: "A", url: '"><script>alert(1)</script>' } }),
     });
-    const html = renderVendor("acme", [latest], false);
-    expect(html).not.toContain("<script>alert(1)</script>");
+    expect(renderAccount(r, [r.latest])).not.toContain("<script>alert(1)</script>");
+  });
+
+  test("a malicious CI url cannot break out of the href", () => {
+    const r = productRecord({
+      latest: record({
+        provenance: { workflowRunUrl: '"><script>alert(1)</script>', commit: "a", artifactDigest: "d" },
+      }),
+    });
+    expect(renderAccount(r, [r.latest])).not.toContain("<script>alert(1)</script>");
   });
 });
 
 describe("the site and the MCP server must never disagree", () => {
-  // Assert on the rendered verdict span, not the whole document: every page
-  // carries a stylesheet naming all four verdicts, so a substring check against
-  // the full HTML would pass or fail for the wrong reason.
-  const verdictSpan = (v: string) => `<span class="v ${v}">${v}</span>`;
-
-  test("a stale PASS renders as UNKNOWN, matching reportedVerdict", () => {
-    const a = assertion("send.accepts-valid", "PASS");
-    expect(reportedVerdict(a, true)).toBe("UNKNOWN");
-
-    const html = renderIndex([vendorRecord({ stale: true, ageDays: 90 })]);
-    expect(html).toContain(verdictSpan("UNKNOWN"));
-    expect(html).not.toContain(verdictSpan("PASS"));
+  test("the index shows the same reader guidance the MCP server returns", () => {
+    const r = productRecord({ latest: record({ account: account({ couldSignUp: false }) }) });
+    expect(renderIndex([r])).toContain(esc(readerGuidance(r)));
   });
 
-  test("a fresh PASS renders as PASS", () => {
-    const html = renderIndex([vendorRecord({ stale: false })]);
-    expect(html).toContain(verdictSpan("PASS"));
-    expect(html).not.toContain(verdictSpan("UNKNOWN"));
+  test("guidance is visually escalated when the agent never got in", () => {
+    const r = productRecord({ latest: record({ account: account({ couldSignUp: false }) }) });
+    expect(renderIndex([r])).toContain("guide bad");
   });
 
-  test("a stale FAIL still renders as FAIL, never softened by age", () => {
-    const latest = record({ assertions: [assertion("delivery.arrives", "FAIL", 0)] });
-    const html = renderIndex([vendorRecord({ latest, stale: true })]);
-    expect(html).toContain(verdictSpan("FAIL"));
-    expect(html).not.toContain(verdictSpan("UNKNOWN"));
+  test("a stale account is flagged rather than shown as current", () => {
+    expect(renderIndex([productRecord({ stale: true, ageDays: 90 })])).toContain("guide warn");
   });
 });
 
-describe("ratios and measurements", () => {
-  test("publishes the ratio rather than rounding to a verdict", () => {
-    const latest = record({ assertions: [assertion("send.accepts-valid", "PASS", 2)] });
-    const html = renderIndex([vendorRecord({ latest })]);
-    expect(html).toContain("2/3");
+describe("evidence is separated from the account", () => {
+  test("the product page states the separation explicitly", () => {
+    const html = renderAccount(productRecord(), [record()]);
+    expect(html).toContain("independent of anything the agent concluded");
+    expect(html).toContain("cannot change whether an email arrived");
   });
 
-  test("shows measurements on the product page", () => {
-    const latest = record({
-      assertions: [assertion("delivery.latency", "PASS", 3, { deliverySeconds: 4.2 })],
+  test("a locally produced record is labelled as not evidence", () => {
+    expect(renderAccount(productRecord(), [record()])).toContain("not evidence");
+  });
+
+  test("our own mailbox failing is attributed to us, not the product", () => {
+    const r = productRecord({
+      latest: record({
+        evidence: {
+          steps: [],
+          email: { address: "a@b", nonce: "n", arrived: false, inboxUnavailable: "500 from inbox" },
+          totalSeconds: 10,
+        },
+      }),
     });
-    const html = renderVendor("acme", [latest], false);
-    expect(html).toContain("deliverySeconds 4.2");
+    expect(renderAccount(r, [r.latest])).toContain("Not the product's fault");
   });
 
-  test("marks an assertion that was not run for this vendor", () => {
-    const withBoth = vendorRecord({
-      vendor: "a",
-      latest: record({ assertions: [assertion("send.accepts-valid", "PASS"), assertion("bounce.reported", "PASS")] }),
-    });
-    const withOne = vendorRecord({ vendor: "b", latest: record({ assertions: [assertion("send.accepts-valid", "PASS")] }) });
-    const html = renderIndex([withBoth, withOne]);
-    expect(html).toContain("not run");
-  });
-});
-
-describe("provenance", () => {
-  test("warns loudly when a record was produced locally", () => {
-    const html = renderVendor("acme", [record()], false);
-    expect(html).toContain("Not independently produced");
-    expect(html).toContain("is not evidence");
-  });
-
-  test("links the CI run and publishes the seed when provenance exists", () => {
-    const latest = record({
-      provenance: {
-        workflowRunUrl: "https://github.com/x/y/actions/runs/1",
-        commit: "abc",
-        artifactDigest: "sha256:x",
-      },
-    });
-    const html = renderVendor("acme", [latest], false);
-    expect(html).toContain("https://github.com/x/y/actions/runs/1");
+  test("publishes the replay seed and domain", () => {
+    const html = renderAccount(productRecord(), [record()]);
     expect(html).toContain("deadbeef");
-    expect(html).not.toContain("Not independently produced");
+    expect(html).toContain("send.softruth.com");
+  });
+
+  test("shows unverified claims as their own section", () => {
+    expect(renderAccount(productRecord(), [record()])).toContain("not verified by using it");
   });
 });
 
 describe("history", () => {
-  test("a single run says so rather than showing an empty table", () => {
-    expect(renderVendor("acme", [record()], false)).toContain("only run so far");
+  test("a first session says so rather than showing an empty list", () => {
+    expect(renderAccount(productRecord(), [record()])).toContain("first time an agent has used");
   });
 
-  test("older runs appear and the append-only rule is stated", () => {
-    const newest = record({ finishedAt: "2026-09-05T00:00:00.000Z" });
-    const older = record({ finishedAt: "2026-08-01T00:00:00.000Z" });
-    const html = renderVendor("acme", [newest, older], false);
+  test("earlier sessions appear and the append-only rule is stated", () => {
+    const newest = record({ finishedAt: "2026-09-08T00:00:00.000Z" });
+    const older = record({ finishedAt: "2026-08-01T00:00:00.000Z", account: account({ bottomLine: "Older take." }) });
+    const html = renderAccount(productRecord({ latest: newest }), [newest, older]);
     expect(html).toContain("2026-08-01");
-    expect(html).toContain("does not edit an old one");
+    expect(html).toContain("Older take.");
+    expect(html).toContain("never removed or edited");
   });
 });

@@ -1,63 +1,68 @@
 /**
- * Reading the record. Kept separate from the MCP transport so the rules below
- * can be tested directly rather than through stdio.
+ * Reading the register.
  *
- * Two rules, both about what an agent is allowed to conclude:
+ * What is published is an agent's account of using a product, with the evidence
+ * of what it actually did sitting next to it. Kept separate from the MCP
+ * transport so the rules below can be tested directly rather than through stdio.
  *
- *   1. Absence is reported as absence. An untested product returns "no verified
- *      record", never an empty pass or a silence that reads like approval.
- *   2. Staleness is surfaced, never hidden. A PASS older than the freshness
- *      window is reported as UNKNOWN. Without that, a vendor pays once, passes,
- *      cancels, and keeps a permanent trophy while the product rots.
+ * Three rules about what a reader is allowed to conclude:
+ *
+ *   1. Absence is absence. A product nobody has used returns "no account", never
+ *      a silence that reads like approval.
+ *   2. Staleness is surfaced. Software changes; an account from months ago
+ *      describes a product that may no longer exist in that form.
+ *   3. Evidence and account never merge. The account is what an agent concluded,
+ *      and page content is written by the party with an interest in that
+ *      conclusion. The evidence is what demonstrably happened. A reader gets both
+ *      and can weigh the second against the first.
  */
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { AssertionResult, RunRecord } from "../suite/types";
+import type { ExplorationRecord } from "../agent/types";
 
 export const DEFAULT_FRESHNESS_WINDOW_DAYS = 45;
 
-export interface VendorRecord {
-  vendor: string;
-  latest: RunRecord;
+export interface ProductRecord {
+  slug: string;
+  latest: ExplorationRecord;
   ageDays: number;
   stale: boolean;
 }
 
 export interface LoadOptions {
-  resultsDir?: string;
+  explorationsDir?: string;
   freshnessWindowDays?: number;
   /** Injectable for tests; defaults to the real clock. */
   now?: () => number;
 }
 
 /**
- * Load the newest record per vendor.
+ * Load the newest account per product.
  *
- * A missing results directory yields an empty list rather than an error: an
- * empty registry is a valid and honest state, not a fault. A malformed record
- * is skipped rather than guessed at, because reporting a product wrongly is
- * worse than reporting it as untested.
+ * A missing directory yields an empty list rather than an error: an empty
+ * register is a valid state, not a fault. A malformed record is skipped rather
+ * than guessed at, because describing a product wrongly is worse than saying
+ * nothing about it.
  */
-export async function loadLatestRecords(options: LoadOptions = {}): Promise<VendorRecord[]> {
-  const resultsDir = options.resultsDir ?? "results";
+export async function loadLatestRecords(options: LoadOptions = {}): Promise<ProductRecord[]> {
+  const dir = options.explorationsDir ?? "explorations";
   const windowDays = options.freshnessWindowDays ?? DEFAULT_FRESHNESS_WINDOW_DAYS;
   const now = options.now ?? Date.now;
 
-  let vendorDirs: string[];
+  let productDirs: string[];
   try {
-    vendorDirs = (await readdir(resultsDir, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
+    productDirs = (await readdir(dir, { withFileTypes: true }))
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
   } catch {
     return [];
   }
 
-  const records: VendorRecord[] = [];
+  const records: ProductRecord[] = [];
 
-  for (const vendor of vendorDirs) {
-    const dir = join(resultsDir, vendor);
-    const files = (await readdir(dir).catch(() => []))
+  for (const slug of productDirs) {
+    const files = (await readdir(join(dir, slug)).catch(() => []))
       .filter((f) => f.endsWith(".json") && !f.endsWith(".attestation.json"))
       .sort();
 
@@ -65,12 +70,12 @@ export async function loadLatestRecords(options: LoadOptions = {}): Promise<Vend
     if (!newest) continue;
 
     try {
-      const latest: RunRecord = JSON.parse(await readFile(join(dir, newest), "utf-8"));
+      const latest: ExplorationRecord = JSON.parse(await readFile(join(dir, slug, newest), "utf-8"));
       const finished = Date.parse(latest.finishedAt);
       if (Number.isNaN(finished)) continue;
 
       const ageDays = (now() - finished) / 86_400_000;
-      records.push({ vendor, latest, ageDays, stale: ageDays > windowDays });
+      records.push({ slug, latest, ageDays, stale: ageDays > windowDays });
     } catch {
       continue;
     }
@@ -79,104 +84,118 @@ export async function loadLatestRecords(options: LoadOptions = {}): Promise<Vend
   return records;
 }
 
-/**
- * Every record for one vendor, newest first.
- *
- * Used by the site's per-product timeline. The index and the MCP server both use
- * `loadLatestRecords` instead, so all three surfaces agree on what "current"
- * means rather than each deciding for itself.
- */
-export async function loadVendorHistory(vendor: string, options: LoadOptions = {}): Promise<RunRecord[]> {
-  const resultsDir = options.resultsDir ?? "results";
-  const dir = join(resultsDir, vendor);
+/** Every account for one product, newest first. */
+export async function loadProductHistory(slug: string, options: LoadOptions = {}): Promise<ExplorationRecord[]> {
+  const dir = join(options.explorationsDir ?? "explorations", slug);
 
   const files = (await readdir(dir).catch(() => []))
     .filter((f) => f.endsWith(".json") && !f.endsWith(".attestation.json"))
     .sort()
     .reverse();
 
-  const records: RunRecord[] = [];
+  const records: ExplorationRecord[] = [];
   for (const file of files) {
     try {
-      const parsed: RunRecord = JSON.parse(await readFile(join(dir, file), "utf-8"));
+      const parsed: ExplorationRecord = JSON.parse(await readFile(join(dir, file), "utf-8"));
       if (!Number.isNaN(Date.parse(parsed.finishedAt))) records.push(parsed);
     } catch {
-      continue; // Skip rather than guess. Same rule as loadLatestRecords.
+      continue;
     }
   }
   return records;
 }
 
 /**
- * The verdict as an agent should see it.
+ * How much weight a reader should give this account.
  *
- * Decay applies only to PASS. A stale FAIL stays a FAIL: the product was
- * observed to be broken and nothing since has shown otherwise, so softening it
- * would be doing the vendor a favour at a reader's expense. A stale
- * INCONCLUSIVE was never a claim to begin with.
+ * An agent that never got past signup is not describing the product, it is
+ * describing a door it could not open. Saying so plainly is more useful than a
+ * confident summary assembled from a homepage, and it is the difference between
+ * this register and the blog posts it exists to replace.
  */
-export function reportedVerdict(assertion: AssertionResult, stale: boolean): string {
-  if (stale && assertion.verdict === "PASS") return "UNKNOWN";
-  return assertion.verdict;
+export function readerGuidance(record: ProductRecord): string {
+  const { account, evidence } = record.latest;
+
+  if (!account.couldSignUp) {
+    return "The agent could not sign up, so this describes the way in, not the product. Do not treat it as an evaluation.";
+  }
+  if (!account.couldUseCoreFeature) {
+    return "The agent signed up but never used the product's core feature, so this covers onboarding only.";
+  }
+  if (evidence.email.inboxUnavailable) {
+    return "Our own mailbox failed during this session, so anything about email verification here is unreliable.";
+  }
+  if (record.stale) {
+    return "This account is older than the freshness window. Software changes; treat it as historical.";
+  }
+  if (account.confidence <= 4) {
+    return "The agent itself rated this account low confidence. Weigh it accordingly.";
+  }
+  return "The agent signed up and used the product. Evidence for each step is published alongside.";
 }
 
-/** Human and agent readable rendering of one vendor's latest record. */
-export function describeRecord(record: VendorRecord, windowDays = DEFAULT_FRESHNESS_WINDOW_DAYS): string {
-  const lines: string[] = [];
+/** Full rendering of one product's latest account, for an agent to read. */
+export function describeRecord(record: ProductRecord, windowDays = DEFAULT_FRESHNESS_WINDOW_DAYS): string {
+  const { latest } = record;
+  const { account, evidence, agent } = latest;
   const age = Math.round(record.ageDays);
+  const lines: string[] = [];
 
-  lines.push(`## ${record.vendor}`);
-  lines.push(`Spec: ${record.latest.specVersion}`);
-  lines.push(`Last verified: ${record.latest.finishedAt.slice(0, 10)} (${age} day${age === 1 ? "" : "s"} ago)`);
-  // Seed AND domain: the seed determines the local-parts, the domain completes
-  // the addresses. Publishing only the seed would make replay ambiguous the
-  // first time the domain changes.
-  lines.push(`Seed (replay this exact run): ${record.latest.seed}`);
-  lines.push(`Inbox domain at time of run: ${record.latest.inboxDomain ?? "unrecorded"}`);
+  lines.push(`## ${latest.product.name} (${latest.product.url})`);
+  lines.push(`Used by ${agent.model} on ${latest.finishedAt.slice(0, 10)}, ${age} day${age === 1 ? "" : "s"} ago.`);
+  lines.push(`How to read this: ${readerGuidance(record)}`);
+  lines.push("");
+
+  lines.push("### What the agent concluded");
+  lines.push(`Bottom line: ${account.bottomLine}`);
+  lines.push(`What it does: ${account.whatItDoes}`);
+  lines.push(`Getting started: ${account.gettingStarted}`);
+  if (account.worked.length) lines.push(`Worked: ${account.worked.join("; ")}`);
+  if (account.didNotWork.length) lines.push(`Did not work: ${account.didNotWork.join("; ")}`);
+  if (account.unverifiedClaims.length) {
+    lines.push(`Claimed but not verified by using it: ${account.unverifiedClaims.join("; ")}`);
+  }
+  lines.push(`Agent's own confidence: ${account.confidence}/10 — ${account.confidenceReason}`);
+  lines.push("");
+
+  lines.push("### Evidence (what demonstrably happened, independent of the account above)");
+  lines.push(`Signed up: ${account.couldSignUp ? "yes" : "no"}. Used core feature: ${account.couldUseCoreFeature ? "yes" : "no"}.`);
+  lines.push(
+    evidence.email.inboxUnavailable
+      ? `Verification email: could not check, our mailbox failed (${evidence.email.inboxUnavailable}). Not the product's fault.`
+      : evidence.email.arrived
+        ? `Verification email arrived in ${evidence.email.secondsToArrive}s at an address we control.`
+        : "No verification email arrived at the address we control.",
+  );
+  lines.push(`${evidence.steps.length} actions taken over ${evidence.totalSeconds}s, each with a screenshot.`);
+  lines.push(`Replay: seed ${latest.seed} against ${latest.inboxDomain}`);
 
   if (record.stale) {
-    lines.push(
-      `STALE: older than the ${windowDays}-day freshness window. ` +
-        `Passing results are reported as UNKNOWN because nothing has re-verified them.`,
-    );
+    lines.push(`STALE: older than the ${windowDays}-day window.`);
   }
 
-  if (record.latest.provenance?.workflowRunUrl) {
-    lines.push(`CI run: ${record.latest.provenance.workflowRunUrl}`);
-  } else {
-    lines.push(
-      `NOT INDEPENDENTLY PRODUCED: no CI provenance, so this record was generated locally ` +
-        `and is not evidence. Treat it as unverified.`,
-    );
-  }
-
-  lines.push("");
-  for (const a of record.latest.assertions) {
-    const verdict = reportedVerdict(a, record.stale);
-    const measurements = a.measurements
-      ? ` (${Object.entries(a.measurements)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(", ")})`
-      : "";
-    lines.push(`- ${a.assertionId}: ${verdict} ${a.passed}/${a.total}${measurements}`);
-  }
+  lines.push(
+    latest.provenance?.workflowRunUrl
+      ? `CI run: ${latest.provenance.workflowRunUrl}`
+      : "NOT INDEPENDENTLY PRODUCED: no CI provenance, so this was generated locally and is not evidence.",
+  );
 
   return lines.join("\n");
 }
 
-/** Reply when a product has never been tested. */
-export function describeMissing(vendor: string): string {
+/** Reply when a product has never been used. */
+export function describeMissing(slug: string): string {
   return (
-    `No verified record for "${vendor}". SOFtruth has never tested this product. ` +
-    `This says nothing about its quality: only that no independent test exists here.`
+    `No account for "${slug}". No agent has used this product. ` +
+    `That says nothing about its quality: only that nobody here has tried it.`
   );
 }
 
-/** Reply when nothing at all has been tested. */
-export function describeEmptyRegistry(): string {
+/** Reply when nothing at all has been used. */
+export function describeEmptyRegister(): string {
   return (
-    "No products have a verified test record yet. " +
-    "Do not infer anything about any product from this: an empty registry means nothing has been tested, " +
+    "No products have been used by an agent yet. " +
+    "Do not infer anything from this: an empty register means nothing has been tried, " +
     "not that products are untrustworthy."
   );
 }

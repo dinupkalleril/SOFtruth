@@ -1,0 +1,148 @@
+name: Explore a product
+
+# Sends an agent to sign up for a product and use it, then publishes what it
+# found via pull request. It never commits to main directly.
+#
+# The PR is the review gate. An account is a public statement about a named
+# company written by a model that read pages the company controls, so a person
+# reads it before it publishes. That is not a formality: prompt injection is a
+# real attack on this exact surface, and the whole design assumes the account can
+# be influenced even though the evidence cannot.
+#
+# Ordering is load-bearing:
+#   agent runs   →  record exists
+#   attest       →  signs THAT file's digest
+#   commit       →  the attested bytes, unmodified
+# Anything that rewrites the file after attestation invalidates the signature.
+
+on:
+  workflow_dispatch:
+    inputs:
+      product:
+        description: "Product slug (must match products/<slug>.json)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  # Required by actions/attest for Sigstore keyless signing via GitHub OIDC.
+  id-token: write
+  attestations: write
+
+jobs:
+  explore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+
+      - run: bun install --frozen-lockfile
+
+      - name: Verify the reading rules before publishing anything
+        # The site and the MCP server share their reading rules. If a person and
+        # an assistant could see different guidance about the same account, the
+        # register is worthless, so those tests gate the run.
+        run: bun test
+
+      - name: Install a browser for the agent
+        # Chromium only. The agent needs hands, not a compatibility matrix.
+        run: bunx playwright install --with-deps chromium
+
+      - name: Send the agent in
+        id: agent
+        env:
+          # The agent's own reasoning. Without this it cannot think, and the run
+          # would fail for our reasons rather than telling us anything.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # Receives the signup verification email. Without it the agent usually
+          # cannot finish signing up, and a failure would again be ours.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SOFTRUTH_INBOX_DOMAIN: ${{ vars.SOFTRUTH_INBOX_DOMAIN }}
+        run: bun run agent/run.ts --product "${{ inputs.product }}"
+
+      - name: Move the record into the published register
+        run: |
+          set -euo pipefail
+          SRC='${{ steps.agent.outputs.record_path }}'
+          DEST="explorations/${{ inputs.product }}/$(basename "$(dirname "$SRC")").json"
+          mkdir -p "$(dirname "$DEST")"
+          cp "$SRC" "$DEST"
+          echo "record=$DEST" >> "$GITHUB_ENV"
+
+      - name: Attest the record
+        # Signs the exact bytes. On a public repo this uses the public-good
+        # Sigstore instance, so the signature lands in the Rekor transparency log
+        # and nobody, including us, can quietly alter the entry afterwards.
+        id: attest
+        uses: actions/attest@v3
+        with:
+          subject-path: ${{ env.record }}
+          predicate-type: https://softruth.com/predicate/exploration/v1
+          predicate: '{"schemaVersion":"softruth/exploration/v1","seed":"${{ steps.agent.outputs.seed }}"}'
+
+      - name: Record the attestation alongside it
+        # actions/attest signs an artifact digest, not the commit. Without the
+        # digest and bundle stored next to the record, a verifier cannot connect
+        # the published file to its Rekor entry.
+        run: |
+          set -euo pipefail
+          DIGEST="sha256:$(sha256sum "$record" | cut -d' ' -f1)"
+          jq -n \
+            --arg digest "$DIGEST" \
+            --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg commit "$GITHUB_SHA" \
+            --argjson bundle "$(cat '${{ steps.attest.outputs.bundle-path }}')" \
+            '{artifactDigest:$digest, workflowRunUrl:$url, commit:$commit, bundle:$bundle}' \
+            > "${record%.json}.attestation.json"
+          echo "attested $DIGEST"
+
+      - name: Keep the screenshots
+        # The evidence layer is only meaningful if someone can look at it. Kept as
+        # an artifact rather than committed: they are large, and the record already
+        # names each one.
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: session-${{ inputs.product }}-${{ github.run_id }}
+          path: sessions/
+          retention-days: 90
+
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCT: ${{ inputs.product }}
+          SIGNED_UP: ${{ steps.agent.outputs.signed_up }}
+          CONFIDENCE: ${{ steps.agent.outputs.confidence }}
+        run: |
+          set -euo pipefail
+          BRANCH="exploration/${PRODUCT}-${GITHUB_RUN_ID}"
+          git config user.name "softruth-ci"
+          git config user.email "ci@softruth.com"
+          git checkout -b "$BRANCH"
+          git add explorations/
+          git commit -m "exploration(${PRODUCT}): signed up ${SIGNED_UP}, agent confidence ${CONFIDENCE}/10"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --title "exploration(${PRODUCT}): signed up ${SIGNED_UP}, confidence ${CONFIDENCE}/10" \
+            --body "$(printf '%s\n' \
+              '## Read before merging' \
+              '' \
+              'This account was written by a model that read pages the product owner controls.' \
+              'Prompt injection against this surface is a real attack, so check the account against' \
+              'the evidence and the screenshots before publishing it as a statement about a named company.' \
+              '' \
+              'Specifically worth checking:' \
+              '- Does the account match what the screenshots show?' \
+              '- Did the agent report any instruction it found in page content?' \
+              '- If it says a verification email did not arrive, was our mailbox actually up?' \
+              '' \
+              "Screenshots are in the run artifact. Seed \`${{ steps.agent.outputs.seed }}\`." \
+              "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")"

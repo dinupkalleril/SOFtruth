@@ -3,16 +3,18 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  describeEmptyRegistry,
+  describeEmptyRegister,
   describeMissing,
   describeRecord,
   loadLatestRecords,
-  reportedVerdict,
+  loadProductHistory,
+  readerGuidance,
+  type ProductRecord,
 } from "./registry";
-import type { AssertionResult, RunRecord } from "../suite/types";
+import type { AgentAccount, ExplorationRecord } from "../agent/types";
 
 const DAY = 86_400_000;
-const NOW = Date.parse("2026-09-07T12:00:00.000Z");
+const NOW = Date.parse("2026-09-08T12:00:00.000Z");
 
 let scratch: string | null = null;
 afterEach(async () => {
@@ -20,27 +22,46 @@ afterEach(async () => {
   scratch = null;
 });
 
-function assertion(id: string, verdict: AssertionResult["verdict"], passed = 3): AssertionResult {
-  return { assertionId: id, verdict, passed, total: 3, attempts: [] };
-}
-
-function record(overrides: Partial<RunRecord> = {}): RunRecord {
+function account(overrides: Partial<AgentAccount> = {}): AgentAccount {
   return {
-    schemaVersion: "softruth/run/v1",
-    specVersion: "transactional-email/v1",
-    vendor: "acme",
-    seed: "deadbeef",
-    inboxDomain: "inbox.example.com",
-    bounceDomain: "bounce.inbox.example.com",
-    startedAt: "2026-09-01T00:00:00.000Z",
-    finishedAt: "2026-09-01T00:05:00.000Z",
-    runsPerAssertion: 3,
-    assertions: [assertion("send.accepts-valid", "PASS")],
+    couldSignUp: true,
+    couldUseCoreFeature: true,
+    whatItDoes: "Sends transactional email over an API.",
+    gettingStarted: "Signup took two screens and a verification email.",
+    worked: ["API key issued immediately"],
+    didNotWork: [],
+    unverifiedClaims: ["99.9% deliverability"],
+    bottomLine: "Got in and sent a message within four minutes.",
+    confidence: 8,
+    confidenceReason: "Completed signup and used the core feature.",
     ...overrides,
   };
 }
 
-async function withResults(files: Record<string, RunRecord | string>): Promise<string> {
+function record(overrides: Partial<ExplorationRecord> = {}): ExplorationRecord {
+  return {
+    schemaVersion: "softruth/exploration/v1",
+    product: { slug: "acme", name: "Acme Mail", url: "https://acme.example" },
+    seed: "deadbeef",
+    inboxDomain: "send.softruth.com",
+    startedAt: "2026-09-08T10:00:00.000Z",
+    finishedAt: "2026-09-08T10:06:00.000Z",
+    evidence: {
+      steps: [],
+      email: { address: "agent-x@send.softruth.com", nonce: "sft-x", arrived: true, secondsToArrive: 12 },
+      totalSeconds: 360,
+    },
+    account: account(),
+    agent: { model: "claude-sonnet-5", readPageContent: true },
+    ...overrides,
+  };
+}
+
+function productRecord(overrides: Partial<ProductRecord> = {}): ProductRecord {
+  return { slug: "acme", latest: record(), ageDays: 1, stale: false, ...overrides };
+}
+
+async function withExplorations(files: Record<string, ExplorationRecord | string>): Promise<string> {
   scratch = await mkdtemp(join(tmpdir(), "softruth-"));
   for (const [path, content] of Object.entries(files)) {
     const full = join(scratch, path);
@@ -51,127 +72,126 @@ async function withResults(files: Record<string, RunRecord | string>): Promise<s
 }
 
 describe("loadLatestRecords", () => {
-  test("an empty registry is a valid state, not an error", async () => {
-    expect(await loadLatestRecords({ resultsDir: join(tmpdir(), "softruth-does-not-exist") })).toEqual([]);
+  test("an empty register is a valid state, not an error", async () => {
+    expect(await loadLatestRecords({ explorationsDir: join(tmpdir(), "softruth-nope") })).toEqual([]);
   });
 
-  test("picks the newest record per vendor", async () => {
-    const dir = await withResults({
+  test("picks the newest account per product", async () => {
+    const dir = await withExplorations({
       "acme/2026-09-01.json": record({ seed: "older" }),
       "acme/2026-09-05.json": record({ seed: "newer", finishedAt: "2026-09-05T00:00:00.000Z" }),
     });
-    const records = await loadLatestRecords({ resultsDir: dir, now: () => NOW });
-    expect(records).toHaveLength(1);
-    expect(records[0].latest.seed).toBe("newer");
-  });
-
-  test("ignores attestation sidecar files", async () => {
-    const dir = await withResults({
-      "acme/2026-09-01.json": record(),
-      "acme/2026-09-01.attestation.json": '{"artifactDigest":"sha256:x"}',
-    });
-    const records = await loadLatestRecords({ resultsDir: dir, now: () => NOW });
-    expect(records).toHaveLength(1);
-    expect(records[0].latest.seed).toBe("deadbeef");
+    const [r] = await loadLatestRecords({ explorationsDir: dir, now: () => NOW });
+    expect(r.latest.seed).toBe("newer");
   });
 
   test("skips a malformed record rather than guessing at it", async () => {
-    // Reporting a product wrongly is worse than reporting it as untested.
-    const dir = await withResults({ "acme/2026-09-01.json": "{ not json" });
-    expect(await loadLatestRecords({ resultsDir: dir, now: () => NOW })).toEqual([]);
+    // Describing a product wrongly is worse than saying nothing about it.
+    const dir = await withExplorations({ "acme/x.json": "{ not json" });
+    expect(await loadLatestRecords({ explorationsDir: dir, now: () => NOW })).toEqual([]);
   });
 
-  test("skips a record with an unparseable timestamp", async () => {
-    const dir = await withResults({ "acme/2026-09-01.json": record({ finishedAt: "not-a-date" }) });
-    expect(await loadLatestRecords({ resultsDir: dir, now: () => NOW })).toEqual([]);
-  });
-
-  test("marks a record older than the window as stale", async () => {
-    const dir = await withResults({
+  test("marks an account older than the window as stale", async () => {
+    const dir = await withExplorations({
       "acme/old.json": record({ finishedAt: new Date(NOW - 60 * DAY).toISOString() }),
     });
-    const [r] = await loadLatestRecords({ resultsDir: dir, now: () => NOW, freshnessWindowDays: 45 });
+    const [r] = await loadLatestRecords({ explorationsDir: dir, now: () => NOW, freshnessWindowDays: 45 });
     expect(r.stale).toBe(true);
-  });
-
-  test("a record inside the window is not stale", async () => {
-    const dir = await withResults({
-      "acme/recent.json": record({ finishedAt: new Date(NOW - 10 * DAY).toISOString() }),
-    });
-    const [r] = await loadLatestRecords({ resultsDir: dir, now: () => NOW, freshnessWindowDays: 45 });
-    expect(r.stale).toBe(false);
   });
 });
 
-describe("reportedVerdict — staleness decay", () => {
-  test("a stale PASS becomes UNKNOWN", () => {
-    // The pay-once-pass-forever hole. A vendor must not keep a trophy while
-    // their product rots and nothing re-verifies it.
-    expect(reportedVerdict(assertion("a", "PASS"), true)).toBe("UNKNOWN");
+describe("loadProductHistory", () => {
+  test("returns every account newest first", async () => {
+    const dir = await withExplorations({
+      "acme/a.json": record({ seed: "first", finishedAt: "2026-09-01T00:00:00.000Z" }),
+      "acme/b.json": record({ seed: "second", finishedAt: "2026-09-05T00:00:00.000Z" }),
+    });
+    const history = await loadProductHistory("acme", { explorationsDir: dir });
+    expect(history.map((h) => h.seed)).toEqual(["second", "first"]);
+  });
+});
+
+describe("readerGuidance — how much weight an account deserves", () => {
+  test("an agent that never signed up is describing the door, not the product", () => {
+    const r = productRecord({ latest: record({ account: account({ couldSignUp: false }) }) });
+    expect(readerGuidance(r)).toContain("could not sign up");
+    expect(readerGuidance(r)).toContain("Do not treat it as an evaluation");
   });
 
-  test("a fresh PASS stays a PASS", () => {
-    expect(reportedVerdict(assertion("a", "PASS"), false)).toBe("PASS");
+  test("signed up but never used the core feature covers onboarding only", () => {
+    const r = productRecord({ latest: record({ account: account({ couldUseCoreFeature: false }) }) });
+    expect(readerGuidance(r)).toContain("onboarding only");
   });
 
-  test("a stale FAIL stays a FAIL", () => {
-    // Softening an observed failure over time would be a favour to the vendor
-    // at the reader's expense. Nothing has shown the product got fixed.
-    expect(reportedVerdict(assertion("a", "FAIL", 0), true)).toBe("FAIL");
+  test("our own mailbox failing is called out as ours", () => {
+    // Otherwise a reader blames the product for our outage.
+    const r = productRecord({
+      latest: record({
+        evidence: {
+          steps: [],
+          email: { address: "a@b", nonce: "n", arrived: false, inboxUnavailable: "500 from inbox" },
+          totalSeconds: 10,
+        },
+      }),
+    });
+    expect(readerGuidance(r)).toContain("Our own mailbox failed");
   });
 
-  test("a stale INCONCLUSIVE stays INCONCLUSIVE", () => {
-    expect(reportedVerdict(assertion("a", "INCONCLUSIVE", 0), true)).toBe("INCONCLUSIVE");
+  test("a low-confidence account is flagged as such", () => {
+    const r = productRecord({ latest: record({ account: account({ confidence: 3 }) }) });
+    expect(readerGuidance(r)).toContain("rated this account low confidence");
+  });
+
+  test("a complete, fresh, confident session says so plainly", () => {
+    expect(readerGuidance(productRecord())).toContain("signed up and used the product");
   });
 });
 
 describe("describeRecord", () => {
-  test("always publishes the seed so any run can be replayed", () => {
-    const text = describeRecord({ vendor: "acme", latest: record(), ageDays: 2, stale: false });
-    expect(text).toContain("deadbeef");
+  test("separates what the agent concluded from what demonstrably happened", () => {
+    // The whole trust model: a product can shape a conclusion, not the evidence.
+    const text = describeRecord(productRecord());
+    expect(text).toContain("What the agent concluded");
+    expect(text).toContain("Evidence (what demonstrably happened");
   });
 
-  test("shows the ratio, not just the verdict", () => {
-    // 2/3 and 3/3 are different products.
-    const latest = record({ assertions: [assertion("send.accepts-valid", "PASS", 2)] });
-    const text = describeRecord({ vendor: "acme", latest, ageDays: 2, stale: false });
-    expect(text).toContain("2/3");
+  test("publishes the replay information", () => {
+    const text = describeRecord(productRecord());
+    expect(text).toContain("deadbeef");
+    expect(text).toContain("send.softruth.com");
+  });
+
+  test("names the agent, so an account carries a byline", () => {
+    expect(describeRecord(productRecord())).toContain("claude-sonnet-5");
+  });
+
+  test("surfaces unverified claims separately from what worked", () => {
+    expect(describeRecord(productRecord())).toContain("Claimed but not verified");
   });
 
   test("warns loudly when a record has no CI provenance", () => {
-    // A locally-produced record is not evidence and must not read like it is.
-    const text = describeRecord({ vendor: "acme", latest: record(), ageDays: 1, stale: false });
-    expect(text).toContain("NOT INDEPENDENTLY PRODUCED");
+    expect(describeRecord(productRecord())).toContain("NOT INDEPENDENTLY PRODUCED");
   });
 
   test("links the CI run when provenance exists", () => {
-    const latest = record({
-      provenance: {
-        workflowRunUrl: "https://github.com/x/y/actions/runs/1",
-        commit: "abc",
-        artifactDigest: "sha256:x",
-      },
+    const r = productRecord({
+      latest: record({
+        provenance: { workflowRunUrl: "https://github.com/x/y/actions/runs/1", commit: "a", artifactDigest: "d" },
+      }),
     });
-    const text = describeRecord({ vendor: "acme", latest, ageDays: 1, stale: false });
+    const text = describeRecord(r);
     expect(text).toContain("https://github.com/x/y/actions/runs/1");
     expect(text).not.toContain("NOT INDEPENDENTLY PRODUCED");
-  });
-
-  test("says a stale record is stale, and reports its PASS as UNKNOWN", () => {
-    const text = describeRecord({ vendor: "acme", latest: record(), ageDays: 90, stale: true });
-    expect(text).toContain("STALE");
-    expect(text).toContain("send.accepts-valid: UNKNOWN");
   });
 });
 
 describe("absence is reported as absence", () => {
-  test("an untested product is explicitly untested, not silently fine", () => {
-    const text = describeMissing("acme");
-    expect(text).toContain("never tested");
-    expect(text).toContain("says nothing about its quality");
+  test("an unused product is explicitly unused, not silently fine", () => {
+    expect(describeMissing("acme")).toContain("No agent has used this product");
+    expect(describeMissing("acme")).toContain("says nothing about its quality");
   });
 
-  test("an empty registry tells the agent not to infer anything", () => {
-    expect(describeEmptyRegistry()).toContain("Do not infer anything");
+  test("an empty register tells the reader not to infer anything", () => {
+    expect(describeEmptyRegister()).toContain("Do not infer anything");
   });
 });
