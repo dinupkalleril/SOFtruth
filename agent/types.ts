@@ -66,6 +66,30 @@ export interface EmailEvidence {
 }
 
 /**
+ * Why an agent could not get further, when it could not.
+ *
+ * Structured rather than buried in prose because "we could not evaluate this" is
+ * a completely different claim from "this product is bad", and a reader must not
+ * confuse them. It is also a measurement in its own right: as more buying
+ * decisions route through agents, whether a product can be evaluated by one at
+ * all becomes a real product attribute, and this is the taxonomy of what stops
+ * them.
+ */
+export type Blocker =
+  /** A card was required before the core feature could be reached. */
+  | "payment-required"
+  /** Signup demanded a phone number or SMS code. */
+  | "phone-verification"
+  /** Access needed a human to approve, a demo call, or a waitlist. */
+  | "manual-approval"
+  /** A CAPTCHA or bot check the agent could not pass. */
+  | "bot-check"
+  /** The product is not usable in a browser (mobile app, Telegram, desktop). */
+  | "not-web"
+  /** Something else; blockedDetail says what. */
+  | "other";
+
+/**
  * The agent's own account, written for other agents.
  *
  * Prose is deliberate. The original idea was that an agent writes about the
@@ -75,6 +99,10 @@ export interface AgentAccount {
   /** Could the agent get in and use the thing at all? */
   couldSignUp: boolean;
   couldUseCoreFeature: boolean;
+  /** Set when something stopped the agent before it could finish evaluating. */
+  blockedBy?: Blocker | null;
+  /** What exactly was demanded, in the agent's words. */
+  blockedDetail?: string;
   /** What the product appears to actually do, in the agent's words. */
   whatItDoes: string;
   /** How getting started went. Friction, dead ends, surprises. */

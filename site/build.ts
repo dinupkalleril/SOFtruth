@@ -86,6 +86,9 @@ conclusion but cannot change whether an email arrived.
 }
 
 function guidanceClass(record: ProductRecord): string {
+  // A wall is flagged, not condemned. The product made a business choice; the
+  // fact worth surfacing is only that nobody got far enough to judge it.
+  if (record.latest.account.blockedBy) return "guide warn";
   if (!record.latest.account.couldSignUp) return "guide bad";
   if (!record.latest.account.couldUseCoreFeature || record.stale || record.latest.account.confidence <= 4) {
     return "guide warn";
@@ -113,6 +116,7 @@ function renderIndex(records: ProductRecord[]): string {
         <h3><a href="./${esc(r.slug)}.html">${esc(r.latest.product.name)}</a></h3>
         <p class="meta">Used by ${esc(r.latest.agent.model)} · ${esc(r.latest.finishedAt.slice(0, 10))}
            · ${age}d ago${r.stale ? " · stale" : ""} · agent's confidence ${esc(a.confidence)}/10</p>
+        ${a.blockedBy ? `<p class="meta"><strong>Blocked: ${esc(a.blockedBy)}</strong></p>` : ""}
         <p class="bottom">${esc(a.bottomLine)}</p>
         <div class="${guidanceClass(r)}">${esc(readerGuidance(r))}</div>
       </div>`;
@@ -149,6 +153,15 @@ function renderAccount(record: ProductRecord, history: ExplorationRecord[]): str
        ${esc(agent.model)} on ${esc(latest.finishedAt.slice(0, 10))}</p>
 
     <div class="${guidanceClass(record)}">${esc(readerGuidance(record))}</div>
+
+    ${
+      account.blockedBy
+        ? `<h2>Blocked: ${esc(account.blockedBy)}</h2>
+           <p>${esc(account.blockedDetail ?? "No further detail given.")}</p>
+           <p class="meta">A buyer evaluating this product meets the same wall. Whether that matters
+           is their call; the register only records that it is there.</p>`
+        : ""
+    }
 
     <h2>What the agent concluded</h2>
     <p class="bottom"><strong>${esc(account.bottomLine)}</strong></p>

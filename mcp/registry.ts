@@ -19,9 +19,25 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ExplorationRecord } from "../agent/types";
+import type { AgentAccount, ExplorationRecord } from "../agent/types";
 
 export const DEFAULT_FRESHNESS_WINDOW_DAYS = 45;
+
+/**
+ * How each wall reads to someone deciding whether to trust an account.
+ *
+ * Written as plain description rather than criticism. A product demanding a card
+ * for its trial is making a reasonable business choice; the fact is simply that
+ * an agent cannot evaluate it, and a buyer meets the same wall.
+ */
+const BLOCKER_TEXT: Record<NonNullable<AgentAccount["blockedBy"]>, string> = {
+  "payment-required": "The agent stopped at a payment wall: card details were required before the core feature could be reached.",
+  "phone-verification": "The agent stopped at phone verification, which it has no way to satisfy.",
+  "manual-approval": "The agent stopped at a human gate: approval, a demo call, or a waitlist.",
+  "bot-check": "The agent stopped at a bot check it could not pass.",
+  "not-web": "The product is not usable in a browser, so an agent cannot reach it at all.",
+  other: "The agent was stopped before it could evaluate the product.",
+};
 
 export interface ProductRecord {
   slug: string;
@@ -116,6 +132,12 @@ export async function loadProductHistory(slug: string, options: LoadOptions = {}
 export function readerGuidance(record: ProductRecord): string {
   const { account, evidence } = record.latest;
 
+  if (account.blockedBy) {
+    // A wall is not a verdict. Which wall a product puts up is useful information
+    // in itself, and confusing it with "the product is bad" would be the single
+    // most damaging misreading this register could invite.
+    return `${BLOCKER_TEXT[account.blockedBy]} This is not a judgement of the product: nobody here got far enough to make one.`;
+  }
   if (!account.couldSignUp) {
     return "The agent could not sign up, so this describes the way in, not the product. Do not treat it as an evaluation.";
   }
@@ -145,6 +167,12 @@ export function describeRecord(record: ProductRecord, windowDays = DEFAULT_FRESH
   lines.push(`Used by ${agent.model} on ${latest.finishedAt.slice(0, 10)}, ${age} day${age === 1 ? "" : "s"} ago.`);
   lines.push(`How to read this: ${readerGuidance(record)}`);
   lines.push("");
+
+  if (account.blockedBy) {
+    lines.push(`### Blocked: ${account.blockedBy}`);
+    lines.push(account.blockedDetail ?? "No further detail given.");
+    lines.push("");
+  }
 
   lines.push("### What the agent concluded");
   lines.push(`Bottom line: ${account.bottomLine}`);
