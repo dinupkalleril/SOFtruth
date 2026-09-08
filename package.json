@@ -2,6 +2,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "openai": "^7.10.0",
     "playwright": "^1.63.0"
   }
 }

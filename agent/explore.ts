@@ -19,12 +19,11 @@
  *   the agent concludes. They cannot change what it did or what came back.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { BrowserSession } from "./browser";
+import type { Brain, ToolCall, ToolSpec, Turn } from "./llm";
 import type { AgentAccount, EmailEvidence } from "./types";
 import type { Inbox } from "../suite/inbox";
 
-const MODEL = process.env.SOFTRUTH_AGENT_MODEL ?? "claude-sonnet-5";
 const MAX_TURNS = 30;
 const EMAIL_WAIT_MS = 120_000;
 
@@ -35,8 +34,8 @@ export interface ExploreOptions {
   identity: { email: string; password: string; name: string; nonce: string };
   browser: BrowserSession;
   inbox: Inbox;
-  /** Injectable for tests. */
-  client?: Anthropic;
+  /** Whichever model is doing the reasoning. Recorded as the account's byline. */
+  brain: Brain;
 }
 
 export interface ExploreResult {
@@ -45,16 +44,16 @@ export interface ExploreResult {
   turnsUsed: number;
 }
 
-const TOOLS: Anthropic.Tool[] = [
+const TOOLS: ToolSpec[] = [
   {
     name: "read_page",
     description: "Look at the current page: its title, visible text, and what can be clicked or filled in.",
-    input_schema: { type: "object", properties: {}, required: [] },
+    parameters: { type: "object", properties: {}, required: [] },
   },
   {
     name: "navigate",
     description: "Go to a URL.",
-    input_schema: {
+    parameters: {
       type: "object",
       properties: { url: { type: "string" } },
       required: ["url"],
@@ -63,7 +62,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "click",
     description: "Click a button or link, described the way a person would name it, e.g. 'Sign up' or 'Continue'.",
-    input_schema: {
+    parameters: {
       type: "object",
       properties: { description: { type: "string" } },
       required: ["description"],
@@ -72,7 +71,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "fill",
     description: "Type into a form field, identified by its label or placeholder, e.g. 'Email' or 'Password'.",
-    input_schema: {
+    parameters: {
       type: "object",
       properties: { field: { type: "string" }, value: { type: "string" } },
       required: ["field", "value"],
@@ -83,14 +82,14 @@ const TOOLS: Anthropic.Tool[] = [
     description:
       "Check the mailbox for the address you signed up with. Use this when a product says it sent a " +
       "verification or confirmation email. Waits up to two minutes.",
-    input_schema: { type: "object", properties: {}, required: [] },
+    parameters: { type: "object", properties: {}, required: [] },
   },
   {
     name: "finish",
     description:
       "Stop and write your account of this product for other agents to read. Call this when you have " +
       "either used the product's core feature, or established that you cannot get that far.",
-    input_schema: {
+    parameters: {
       type: "object",
       properties: {
         couldSignUp: { type: "boolean" },
@@ -158,12 +157,11 @@ function systemPrompt(options: ExploreOptions): string {
 }
 
 export async function explore(options: ExploreOptions): Promise<ExploreResult> {
-  const client = options.client ?? new Anthropic();
-  const { browser, inbox, identity } = options;
+  const { browser, inbox, identity, brain } = options;
 
   const email: EmailEvidence = { address: identity.email, nonce: identity.nonce, arrived: false };
-  const messages: Anthropic.MessageParam[] = [
-    { role: "user", content: `Begin. Go to ${options.productUrl} and sign up.` },
+  const conversation: Turn[] = [
+    { role: "user", text: `Begin. Go to ${options.productUrl} and sign up.` },
   ];
 
   let turns = 0;
@@ -171,42 +169,29 @@ export async function explore(options: ExploreOptions): Promise<ExploreResult> {
   while (turns < MAX_TURNS) {
     turns++;
 
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 2_000,
-      system: systemPrompt(options),
-      tools: TOOLS,
-      messages,
-    });
+    const turn = await brain.think(systemPrompt(options), conversation, TOOLS);
+    conversation.push({ role: "assistant", text: turn.text, toolCalls: turn.toolCalls });
 
-    messages.push({ role: "assistant", content: response.content });
-
-    const toolUses = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
-    if (toolUses.length === 0) {
+    if (turn.toolCalls.length === 0) {
       // The agent stopped without finishing. Nudge once rather than accepting a
       // half-session, then let the turn budget end it.
-      messages.push({
+      conversation.push({
         role: "user",
-        content: "Keep going, or call finish if you have gone as far as you can.",
+        text: "Keep going, or call finish if you have gone as far as you can.",
       });
       continue;
     }
 
-    const results: Anthropic.ToolResultBlockParam[] = [];
+    const results: Array<{ id: string; output: string }> = [];
 
-    for (const use of toolUses) {
-      if (use.name === "finish") {
-        return { account: use.input as unknown as AgentAccount, email, turnsUsed: turns };
+    for (const call of turn.toolCalls) {
+      if (call.name === "finish") {
+        return { account: call.input as unknown as AgentAccount, email, turnsUsed: turns };
       }
-
-      results.push({
-        type: "tool_result",
-        tool_use_id: use.id,
-        content: await runTool(use, browser, inbox, email),
-      });
+      results.push({ id: call.id, output: await runTool(call, browser, inbox, email) });
     }
 
-    messages.push({ role: "user", content: results });
+    conversation.push({ role: "tool_results", results });
   }
 
   // Budget exhausted without the agent concluding. Report that honestly rather
@@ -232,15 +217,15 @@ export async function explore(options: ExploreOptions): Promise<ExploreResult> {
 
 /** Execute one tool call and return what the agent should see back. */
 async function runTool(
-  use: Anthropic.ToolUseBlock,
+  call: ToolCall,
   browser: BrowserSession,
   inbox: Inbox,
   email: EmailEvidence,
 ): Promise<string> {
-  const input = use.input as Record<string, string>;
+  const input = call.input as Record<string, string>;
 
   try {
-    switch (use.name) {
+    switch (call.name) {
       case "read_page": {
         const page = await browser.readPage();
         return [
@@ -287,7 +272,7 @@ async function runTool(
       }
 
       default:
-        return `Unknown tool: ${use.name}`;
+        return `Unknown tool: ${call.name}`;
     }
   } catch (error) {
     // Failures are information for the agent, not crashes. A button that is not

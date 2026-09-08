@@ -57,9 +57,13 @@ jobs:
       - name: Send the agent in
         id: agent
         env:
-          # The agent's own reasoning. Without this it cannot think, and the run
-          # would fail for our reasons rather than telling us anything.
+          # The agent's own reasoning. Either provider works; whichever runs is
+          # recorded in the account as its byline. Without one the run fails for
+          # our reasons rather than telling us anything about the product.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SOFTRUTH_AGENT_PROVIDER: ${{ vars.SOFTRUTH_AGENT_PROVIDER }}
+          SOFTRUTH_AGENT_MODEL: ${{ vars.SOFTRUTH_AGENT_MODEL }}
 
           # Receives the signup verification email. Without it the agent usually
           # cannot finish signing up, and a failure would again be ours.

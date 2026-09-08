@@ -17,12 +17,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { BrowserSession } from "./browser";
 import { explore } from "./explore";
+import { selectBrain } from "./llm";
 import type { ExplorationRecord } from "./types";
 import { MemoryInbox, UnconfiguredInbox, type Inbox } from "../suite/inbox";
 import { ResendInbox } from "../suite/inbox-resend";
 import { generateIdentity, newSeed, resolveInboxDomain } from "../suite/seed";
-
-const MODEL = process.env.SOFTRUTH_AGENT_MODEL ?? "claude-sonnet-5";
 
 interface ProductConfig {
   slug: string;
@@ -68,11 +67,12 @@ async function main(): Promise<void> {
   const inboxDomain = resolveInboxDomain();
   const identity = generateIdentity(seed, inboxDomain);
   const inbox = selectInbox();
+  const brain = selectBrain();
   const startedAt = new Date().toISOString();
 
   const sessionDir = join("sessions", slug, startedAt.replace(/[:.]/g, "-"));
 
-  console.log(`SOFtruth agent — ${MODEL}`);
+  console.log(`SOFtruth agent — ${brain.model}`);
   console.log(`  product : ${product.name} (${product.url})`);
   console.log(`  identity: ${identity.email}`);
   console.log(`  seed    : ${seed}`);
@@ -95,6 +95,7 @@ async function main(): Promise<void> {
       identity,
       browser,
       inbox,
+      brain,
     });
   } finally {
     await browser.stop();
@@ -113,7 +114,7 @@ async function main(): Promise<void> {
       totalSeconds: Math.round((Date.now() - started) / 10) / 100,
     },
     account: result.account,
-    agent: { model: MODEL, readPageContent: true },
+    agent: { model: brain.model, readPageContent: true },
     // Absent on a local run, which is how a reader knows it is not evidence.
     ...(process.env.GITHUB_RUN_ID
       ? {
