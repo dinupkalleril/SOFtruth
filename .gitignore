@@ -11,3 +11,8 @@ site/dist/
 # there would erode that even though the site and MCP server both label it
 # NOT INDEPENDENTLY PRODUCED. Vendor slugs ending in -local never get committed.
 results/*-local/
+
+# Agent session output: screenshots and the raw exploration record. Published
+# records live in results/ and go through CI; a local session is working
+# material, not evidence.
+sessions/

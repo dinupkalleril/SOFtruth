@@ -21,14 +21,21 @@ export type InboxResult =
 
 export interface Inbox {
   /**
-   * Wait until a message containing `nonce` appears at `address`, or the window
-   * expires.
+   * Wait for a message at `address`, or until the window expires.
+   *
+   * `nonce` is optional and means different things in the two cases this serves:
+   *
+   *   With a nonce  — WE sent the message and planted the string, so we can match
+   *                   on content. Used when testing a provider's own delivery.
+   *   Without one   — the PRODUCT wrote the message (a signup verification), so
+   *                   there is nothing of ours to match on. The address is unique
+   *                   per session, which is what makes the message ours.
    *
    * Implementations MUST return `unavailable` (never `not-received`) when the
-   * mailbox itself could not be queried. A provider is not responsible for our
+   * mailbox itself could not be queried. A product is not responsible for our
    * inbox being down.
    */
-  awaitMessage(address: string, nonce: string, timeoutMs: number): Promise<InboxResult>;
+  awaitMessage(address: string, nonce: string | undefined, timeoutMs: number): Promise<InboxResult>;
 
   /** Human-readable name for the record, e.g. "memory" or the service in use. */
   readonly kind: string;
@@ -59,16 +66,16 @@ export class MemoryInbox implements Inbox {
     this.unavailableReason = reason;
   }
 
-  async awaitMessage(address: string, nonce: string, _timeoutMs: number): Promise<InboxResult> {
+  async awaitMessage(address: string, nonce: string | undefined, _timeoutMs: number): Promise<InboxResult> {
     if (this.unavailableReason !== null) {
       return { outcome: "unavailable", error: this.unavailableReason };
     }
 
-    // Match on subject first: providers rewrite bodies (link tracking, pixels)
-    // far more often than they rewrite subjects, so a body-only match is the
-    // weaker signal and we record which one hit.
+    // With no nonce, any message to this address is ours: the address is unique
+    // per session. Match on subject before body otherwise, because products
+    // rewrite bodies (link tracking, pixels) far more often than subjects.
     const hit = this.messages.find(
-      (m) => m.address === address && (m.subject.includes(nonce) || m.body.includes(nonce)),
+      (m) => m.address === address && (!nonce || m.subject.includes(nonce) || m.body.includes(nonce)),
     );
 
     if (!hit) return { outcome: "not-received" };
@@ -77,7 +84,9 @@ export class MemoryInbox implements Inbox {
       outcome: "received",
       receivedAt: hit.receivedAt,
       subject: hit.subject,
-      matchedIn: hit.subject.includes(nonce) ? "subject" : "body",
+      // With no nonce there is nothing to have matched in the body: the address
+      // decided it, and the subject is what we report.
+      matchedIn: !nonce || hit.subject.includes(nonce) ? "subject" : "body",
     };
   }
 }

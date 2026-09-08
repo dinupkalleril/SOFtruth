@@ -1,0 +1,12 @@
+{
+  "slug": "resend",
+  "name": "Resend",
+  "url": "https://resend.com",
+  "_comment": [
+    "The entire vendor onboarding: a name and a URL. No adapter to build, no",
+    "endpoints to implement. The agent goes to the front door like any customer.",
+    "",
+    "Listed here as a worked example of the config shape. Nothing is tested until",
+    "a run is triggered, and no result publishes without review."
+  ]
+}

@@ -61,7 +61,7 @@ export class ResendInbox implements Inbox {
     if (!apiKey) throw new Error("ResendInbox requires an API key");
   }
 
-  async awaitMessage(address: string, nonce: string, timeoutMs: number): Promise<InboxResult> {
+  async awaitMessage(address: string, nonce: string | undefined, timeoutMs: number): Promise<InboxResult> {
     const deadline = Date.now() + timeoutMs;
     const target = address.toLowerCase();
 
@@ -90,7 +90,7 @@ export class ResendInbox implements Inbox {
   }
 
   /** One pass over recent mail. Returns a hit, or null if nothing matched yet. */
-  private async findMessage(address: string, nonce: string): Promise<InboxResult | null> {
+  private async findMessage(address: string, nonce: string | undefined): Promise<InboxResult | null> {
     const listed = await this.request<ListResponse>(`/emails/receiving?limit=${LIST_LIMIT}`);
 
     // No recipient filter exists on the API, so narrow client-side first. Only
@@ -99,9 +99,9 @@ export class ResendInbox implements Inbox {
       (email.to ?? []).some((recipient) => recipient.toLowerCase().includes(address)),
     );
 
-    // Cheap path: the nonce is in the subject, which the list response already
-    // gave us, so no per-message fetch is needed.
-    const bySubject = ours.find((email) => email.subject?.includes(nonce));
+    // With no nonce, the first message to this unique address is ours. Otherwise
+    // the cheap path is a subject match, which the list response already gave us.
+    const bySubject = nonce ? ours.find((email) => email.subject?.includes(nonce)) : ours[0];
     if (bySubject) {
       return {
         outcome: "received",
@@ -113,10 +113,11 @@ export class ResendInbox implements Inbox {
 
     // Fallback: a provider rewrote the subject. Bounded by construction, since
     // only messages already addressed to this run's unique address get here.
-    for (const candidate of ours) {
+    // Skipped entirely when there is no nonce, because the address alone decided it.
+    for (const candidate of nonce ? ours : []) {
       const full = await this.request<RetrievedEmail>(`/emails/receiving/${encodeURIComponent(candidate.id)}`);
       const body = `${full.text ?? ""}${full.html ?? ""}`;
-      if (body.includes(nonce)) {
+      if (nonce && body.includes(nonce)) {
         return {
           outcome: "received",
           receivedAt: parseDate(full.created_at ?? candidate.created_at),
