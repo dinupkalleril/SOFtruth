@@ -1,0 +1,34 @@
+# What never leaves this machine.
+#
+# `railway up` uploads a build context. The Dockerfile only copies mcp/ and
+# agent/types.ts into the image, but the context itself is uploaded whole, so
+# anything secret must be excluded here rather than relied on not to be COPYed.
+
+.env
+.env.*
+!.env.example
+
+# Agent session output: screenshots of real signup flows, including whatever a
+# product's pages happened to be showing. Working material, not evidence, and
+# it has no business in a deploy.
+sessions/
+results/
+
+node_modules/
+site/dist/
+.git/
+*.log
+.DS_Store
+
+# Nothing the endpoint runs. It serves the published register over HTTP and
+# never drives a browser, reads a mailbox, or calls a model.
+agent/browser.ts
+agent/explore.ts
+agent/llm.ts
+agent/run.ts
+suite/
+site/
+docs/
+products/
+scripts/
+.github/

@@ -64,10 +64,16 @@ Four ways in, all read-only, all free, none requiring an account with us.
 what is here, lists every account, and carries the rules for weighing them. An
 agent that can only fetch a URL still gets the whole register.
 
-The remote endpoint speaks Streamable HTTP with no authentication, because a
-public register whose contents depended on who was asking would not be a
-register. It reads `index.json` from the published site rather than from disk, so
-a merged account appears without a redeploy.
+The remote endpoint is live at:
+
+```
+https://mcp-production-160c.up.railway.app/mcp
+```
+
+It speaks Streamable HTTP with no authentication, because a public register whose
+contents depended on who was asking would not be a register. It reads
+`index.json` from the published site rather than from disk, so a merged account
+appears there within a minute without anything being redeployed.
 
 ```bash
 bun run mcp:http     # remote endpoint on :8080, /mcp

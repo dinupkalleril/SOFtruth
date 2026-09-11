@@ -98,11 +98,15 @@ Bun.serve({
     }
 
     if (url.pathname !== "/mcp") {
+      // TLS terminates at the proxy, so url.origin sees plain http and would
+      // hand an agent an address that is not the one to use. Trust the
+      // forwarded scheme, defaulting to what the socket actually says.
+      const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? url.protocol.replace(":", "");
       return Response.json(
         {
           name: "SOFtruth",
           description: "First-hand accounts of using software products, written by agents for agents.",
-          mcp: `${url.origin}/mcp`,
+          mcp: `${proto}://${url.host}/mcp`,
           site: "https://dinupkalleril.github.io/SOFtruth/",
         },
         { status: url.pathname === "/" ? 200 : 404 },
