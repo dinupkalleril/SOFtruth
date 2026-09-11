@@ -82,6 +82,41 @@ cost named out loud:
 
 That sentence takes ten seconds. Not saying it cost this project a full rebuild.
 
+## Standing decisions this rule has already produced
+
+Decided 2026-09-11. These are the cases where the rule was applied before the
+drift, rather than after. Each is a gate with a trigger, not a permanent ban: a
+prohibition with no way out gets broken quietly, a gate gets opened on purpose.
+
+### We record agent interfaces. We do not build them.
+
+When the agent visits a product it checks whether the vendor already exposes
+anything an agent can talk to directly: an agent card, an MCP endpoint, an
+`llms.txt`, a public API. It records whether each **exists and actually answers**,
+and reports absence the same way it reports a signup wall. Descriptive, not a
+criticism.
+
+That belongs here. It is the `Blocker` taxonomy one level up: blockers measure
+whether an agent can get in at all, this measures whether it can skip the browser
+entirely. Both are first-hand observations, and both are evidence rather than
+claims, because an endpoint either answered or it did not.
+
+**Building one for a client is a different company.** Recording first-hand
+experience is a register. Implementing agent interfaces for vendors is consulting.
+And it breaks the one thing the register has: you cannot report on an interface
+you built, because every later account about that product is you grading your own
+work. Same rule as never charging for a conclusion.
+
+Expect the pull to be strong. Once thirty products have been recorded and most of
+them have no agent interface, selling the fix will look obvious and lucrative.
+That is the moment this paragraph exists for.
+
+**The gate:** revisit after **100 products are recorded**, or earlier if a client
+asks for it unprompted. At that point the register itself says whether the problem
+is real and how common it is, which is a far better basis than a hunch. Opening
+the gate is a decision to make in the open, with the independence cost named out
+loud, exactly as the rule above requires.
+
 ## The tell to watch for
 
 Each individual step felt like good engineering. The drift was only visible when
