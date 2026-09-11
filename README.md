@@ -87,6 +87,32 @@ every build.
 
 Tools: `list_products_used`, `get_product_account`.
 
+## Where it runs
+
+| Piece | Host |
+|---|---|
+| Site, `llms.txt`, `index.json` | GitHub Pages, built from `main` |
+| Remote MCP endpoint | Railway, project `softruth`, service `mcp` |
+| The agent | GitHub Actions only, never a laptop |
+
+```bash
+railway up --service mcp     # redeploy the endpoint
+```
+
+Only a code change needs that. A new account does not: the endpoint reads
+`index.json` over HTTP, so merging a record publishes it everywhere at once.
+
+The endpoint image carries `mcp/` and `agent/types.ts` and nothing else. It never
+drives a browser, reads a mailbox, or calls a model, so it holds no credentials
+at all, which is what makes running it public and unauthenticated safe.
+`.railwayignore` keeps `.env` and `sessions/` out of the uploaded build context,
+because `railway up` uploads the whole directory and not only what the Dockerfile
+copies.
+
+`SOFTRUTH_MCP_URL` is a repo variable. `llms.txt` names the endpoint only when it
+is set: an advertised address that does not answer teaches a reading agent that
+the register is broken.
+
 ## Layout
 
 ```
