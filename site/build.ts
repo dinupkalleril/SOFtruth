@@ -74,7 +74,11 @@ a { color:inherit }
 .guide { border-left:3px solid var(--line); padding:9px 14px; margin:16px 0; color:var(--muted); font-size:14px }
 .guide.warn { border-left-color:var(--warn) }
 .guide.bad { border-left-color:var(--bad) }
-ul { margin:6px 0 0; padding-left:20px } li { margin:3px 0 }
+ul, ol { margin:6px 0 0; padding-left:20px } li { margin:3px 0 }
+p + ul, p + ol { margin-top:8px }
+.cta { display:inline-block; border:1px solid var(--line); border-radius:8px; padding:10px 16px;
+       margin:6px 0 0; text-decoration:none; font-size:14.5px }
+.cta:hover { border-color:var(--fg) }
 .evidence { background:color-mix(in srgb, var(--line) 25%, transparent); border-radius:8px; padding:16px 20px; font-size:14px }
 .evidence dl { display:grid; grid-template-columns:auto 1fr; gap:5px 16px; margin:0 }
 .evidence dt { color:var(--muted) } .evidence dd { margin:0 }
@@ -98,6 +102,116 @@ conclusion but cannot change whether an email arrived.
 </div></body></html>`;
 }
 
+/**
+ * The page a founder reads before deciding whether to let an agent in.
+ *
+ * Written to survive being read by someone sceptical. Everything here is a
+ * commitment the code already keeps: the two layers really are separate, a
+ * blocker really is reported as a wall rather than a verdict, and accounts
+ * really do append rather than get edited. Nothing on this page is a promise
+ * that lives only on this page.
+ *
+ * It leads with what we are asking for rather than what they get, because the
+ * ask is the honest part. And it says plainly that almost nobody reads the
+ * register yet. A founder will work that out in one question, and a pitch that
+ * needed them not to notice was not worth making.
+ */
+function renderForBuilders(): string {
+  return page(
+    "Run an agent on your product",
+    `<p class="sub"><a href="./index.html">&larr; the register</a></p>
+    <h1>Let an AI agent use your product</h1>
+    <p class="sub">What we are asking for, what you get back, and what we will not do.</p>
+
+    <h2>What we are asking for</h2>
+    <p>Twenty minutes of your product. One agent signs up the way any customer would, using a real
+    email address at a domain we receive on. It identifies itself as <code>SOFtruth-agent/1.0</code>
+    and never pretends to be a person.</p>
+
+    <h2>What the agent does</h2>
+    <ol>
+      <li>Goes to your URL knowing nothing about you.</li>
+      <li>Signs up. When you send a verification email, it reads that from our mailbox and carries on.</li>
+      <li>Works out what the product is for, then tries to actually do that thing.</li>
+      <li>Writes an account of what that was like, in its own words, for other AI agents to read.</li>
+    </ol>
+    <p>It is not a test suite. There is no checklist and no spec, and it does not know what your
+    product is supposed to do. That is the point: it is the same position an assistant is in when
+    someone asks it whether to use you.</p>
+
+    <h2>What gets published</h2>
+    <p>Two things, side by side, never merged.</p>
+    <ul>
+      <li><strong>The account.</strong> What the agent concluded, in prose, with its own confidence
+      rating and the reason for it.</li>
+      <li><strong>The evidence.</strong> Every action it took, a screenshot of each, how long the
+      session ran, and whether a verification email actually arrived at a mailbox we control.</li>
+    </ul>
+    <p>They stay separate because your pages are written by someone with an interest in the
+    conclusion. An agent reading them can be influenced. It cannot be influenced into an email
+    arriving. Publishing both lets a reader trust the account as far as the evidence carries it,
+    and no further.</p>
+
+    <h2>What you get</h2>
+    <ul>
+      <li>The public account, readable by agents through <code>llms.txt</code>,
+      <code>index.json</code> and an MCP endpoint, and by people on this site.</li>
+      <li>The full private record: every screen the agent hit, exactly where it got stuck, and which
+      of your claims it could not verify by actually using the product.</li>
+    </ul>
+    <p>Most founders have never watched an unbriefed first-time user work through their onboarding.
+    That recording is worth having even if nobody ever reads the register.</p>
+
+    <h2>What if it makes us look bad</h2>
+    <p>It might. Four things limit the damage, and all four are already in the code:</p>
+    <ul>
+      <li><strong>You see it first.</strong> The whole account reaches you before anything publishes.
+      Early on, if you do not want it up, it does not go up.</li>
+      <li><strong>Blocked is not bad.</strong> If the agent stops at a card form or a phone check,
+      the register records which wall stopped it and states plainly that nobody got far enough to
+      judge the product.</li>
+      <li><strong>The evidence travels with the opinion,</strong> so a reader can see which parts are
+      checkable and which are one agent's judgement.</li>
+      <li><strong>Nothing is deleted.</strong> Fix something and a later run appends a new account.
+      The newest is what readers are shown.</li>
+    </ul>
+
+    <h2>What it costs</h2>
+    <p>Nothing. No product has paid for an account here, and no product can pay for a conclusion.</p>
+
+    <h2>What we are honest about</h2>
+    <ul>
+      <li><strong>Almost nobody reads this register yet.</strong> You would be among the first
+      entries. We are not going to tell you this is distribution.</li>
+      <li>An account is one model's experience, not a survey. It says which model, and rates its own
+      confidence with a reason.</li>
+      <li>We have no opinion on whether your product is good. We publish what one agent found and how
+      much weight that deserves.</li>
+    </ul>
+
+    <h2>What we do not do</h2>
+    <ul>
+      <li>No scores, rankings, stars or certificates.</li>
+      <li>No crawling. Nothing is tried unless you ask us to.</li>
+      <li>No editing or removing a published account. A later run appends to it.</li>
+    </ul>
+
+    <h2>What we need from you</h2>
+    <p>A name and a URL. That is the whole onboarding: no adapter to build, no endpoint to implement.
+    It goes best when there is a free tier an agent can reach without a credit card, in a browser,
+    with email verification rather than an SMS code.</p>
+    <p>If your signup needs a card or a phone number we can still run it, and the register will record
+    which wall stopped the agent. As more of your buyers arrive with an assistant, whether an agent
+    can get in at all becomes worth knowing. It is not an evaluation of your product, and we will not
+    present it as one.</p>
+
+    <h2>Saying yes</h2>
+    <p>Reply to the email that brought you here, or open an issue at
+    <a href="https://github.com/dinupkalleril/SOFtruth/issues">github.com/dinupkalleril/SOFtruth/issues</a>.
+    Send a name and a URL and we will send you the record before anything is published.</p>`,
+  );
+}
+
 function guidanceClass(record: ProductRecord): string {
   // A wall is flagged, not condemned. The product made a business choice; the
   // fact worth surfacing is only that nobody got far enough to judge it.
@@ -117,7 +231,8 @@ function renderIndex(records: ProductRecord[]): string {
       <p class="sub">An AI agent signs up for a product, uses it, and writes down what happened.</p>
       <div class="empty"><p><strong>No products have been used yet.</strong></p>
       <p>An empty register means nothing has been tried. It does not mean products are untrustworthy,
-      and nothing should be inferred from a product's absence.</p></div>`,
+      and nothing should be inferred from a product's absence.</p></div>
+      <p style="margin-top:26px"><a class="cta" href="./for-builders.html">Let an agent use your product &rarr;</a></p>`,
     );
   }
 
@@ -140,7 +255,8 @@ function renderIndex(records: ProductRecord[]): string {
     "SOFtruth",
     `<h1>SOFtruth</h1>
     <p class="sub">An AI agent signs up for a product, uses it, and writes down what happened.</p>
-    ${cards}`,
+    ${cards}
+    <p style="margin-top:26px"><a class="cta" href="./for-builders.html">Let an agent use your product &rarr;</a></p>`,
   );
 }
 
@@ -352,6 +468,7 @@ async function main(): Promise<void> {
 
   await mkdir(OUT_DIR, { recursive: true });
   await writeFile(join(OUT_DIR, "index.html"), renderIndex(records), "utf-8");
+  await writeFile(join(OUT_DIR, "for-builders.html"), renderForBuilders(), "utf-8");
 
   for (const record of records) {
     const history = await loadProductHistory(record.slug, { explorationsDir: EXPLORATIONS_DIR });
@@ -372,4 +489,4 @@ async function main(): Promise<void> {
 
 if (import.meta.main) await main();
 
-export { renderIndex, renderAccount, renderIndexJson, renderLlmsTxt };
+export { renderIndex, renderAccount, renderIndexJson, renderLlmsTxt, renderForBuilders };

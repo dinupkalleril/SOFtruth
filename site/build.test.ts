@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { esc, renderAccount, renderIndex, renderIndexJson, renderLlmsTxt } from "./build";
+import {
+  esc,
+  renderAccount,
+  renderForBuilders,
+  renderIndex,
+  renderIndexJson,
+  renderLlmsTxt,
+} from "./build";
 import { readerGuidance, type ProductRecord } from "../mcp/registry";
 import type { AgentAccount, ExplorationRecord } from "../agent/types";
 
@@ -135,6 +142,56 @@ describe("evidence is separated from the account", () => {
 
   test("shows unverified claims as their own section", () => {
     expect(renderAccount(productRecord(), [record()])).toContain("not verified by using it");
+  });
+});
+
+describe("the founder page — every claim on it must be one the code keeps", () => {
+  // Prose in the source wraps across lines, so assert on collapsed whitespace.
+  // Otherwise a reflow breaks a test that was never about formatting.
+  const html = renderForBuilders().replace(/\s+/g, " ");
+
+  test("does not claim distribution we do not have", () => {
+    // The single most tempting lie on this page. A founder works it out in one
+    // question, and a pitch that needed them not to notice was not worth making.
+    expect(html).toContain("Almost nobody reads this register yet");
+    expect(html).toContain("not going to tell you this is distribution");
+  });
+
+  test("states that nothing is paid for, matching the footer", () => {
+    expect(html).toContain("No product has paid for an account here");
+    expect(html).toContain("no product can pay for a conclusion");
+  });
+
+  test("promises a wall is recorded as a wall, not a verdict", () => {
+    expect(html).toContain("Blocked is not bad");
+    expect(html).toContain("nobody got far enough to judge the product");
+  });
+
+  test("promises accounts append rather than get edited", () => {
+    expect(html).toContain("Nothing is deleted");
+    expect(html).toContain("appends");
+  });
+
+  test("says the agent identifies itself rather than posing as a person", () => {
+    expect(html).toContain("SOFtruth-agent/1.0");
+    expect(html).toContain("never pretends to be a person");
+  });
+
+  test("rejects the QA framing the idea once drifted into", () => {
+    // "Test suite against a spec" is the vocabulary of the substituted idea.
+    // See docs/what-went-wrong.md. If this page starts selling QA, the product
+    // follows it there.
+    expect(html).toContain("not a test suite");
+    expect(html).toContain("no checklist and no spec");
+  });
+
+  test("offers no score, ranking or certificate", () => {
+    expect(html).toContain("No scores, rankings, stars or certificates");
+  });
+
+  test("the register links to it so a founder can find it", () => {
+    expect(renderIndex([]).toString()).toContain("for-builders.html");
+    expect(renderIndex([productRecord()])).toContain("for-builders.html");
   });
 });
 
