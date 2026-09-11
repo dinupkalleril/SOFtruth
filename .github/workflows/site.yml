@@ -12,7 +12,9 @@ on:
     paths:
       - "explorations/**"
       - "site/**"
-      - "mcp/registry.ts"
+      # The build imports the reading rules from mcp/, and the gate below runs
+      # mcp/'s tests, so a change anywhere in there should rebuild the site.
+      - "mcp/**"
       - ".github/workflows/site.yml"
   workflow_dispatch:
 
@@ -46,6 +48,12 @@ jobs:
         run: bun test site/ mcp/ suite/
 
       - name: Build
+        # llms.txt advertises the remote MCP endpoint only when one is actually
+        # running. An address in llms.txt that does not answer teaches a reading
+        # agent that the register is broken, so the variable stays unset until
+        # the endpoint is deployed.
+        env:
+          SOFTRUTH_MCP_URL: ${{ vars.SOFTRUTH_MCP_URL }}
         run: bun run site/build.ts
 
       - uses: actions/configure-pages@v5

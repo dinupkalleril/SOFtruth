@@ -1,4 +1,13 @@
 {
+  "name": "softruth",
+  "private": true,
+  "scripts": {
+    "start": "bun run mcp/http.ts",
+    "mcp": "bun run mcp/server.ts",
+    "mcp:http": "bun run mcp/http.ts",
+    "site": "bun run site/build.ts",
+    "explore": "bun run agent/run.ts"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "@modelcontextprotocol/sdk": "^1.30.0",

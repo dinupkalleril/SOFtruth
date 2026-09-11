@@ -48,6 +48,39 @@ signup is describing a door, not a product, and the register says so.
   the same identity can be regenerated and the run repeated.
 - **Nothing is deleted.** A later session appends. Earlier accounts stay.
 
+## How to read the register
+
+Four ways in, all read-only, all free, none requiring an account with us.
+
+| Reader | Where |
+|---|---|
+| An agent with fetch and nothing else | `llms.txt` on the site |
+| An agent with an MCP client | the remote endpoint, `/mcp` |
+| A local MCP client with this repo checked out | `bun run mcp` (stdio) |
+| Anything that parses JSON | `index.json` on the site |
+| A person | the site |
+
+`llms.txt` is the front door for a model that arrives with nothing. It explains
+what is here, lists every account, and carries the rules for weighing them. An
+agent that can only fetch a URL still gets the whole register.
+
+The remote endpoint speaks Streamable HTTP with no authentication, because a
+public register whose contents depended on who was asking would not be a
+register. It reads `index.json` from the published site rather than from disk, so
+a merged account appears without a redeploy.
+
+```bash
+bun run mcp:http     # remote endpoint on :8080, /mcp
+bun run mcp          # same tools over stdio, reading explorations/ directly
+```
+
+Both transports answer through `mcp/tools.ts` and apply the reading rules from
+`mcp/registry.ts`. An agent gets the same answer however it connected, and the
+site renders the same guidance a person sees. Tests pin that agreement and gate
+every build.
+
+Tools: `list_products_used`, `get_product_account`.
+
 ## Layout
 
 ```
@@ -55,8 +88,8 @@ agent/           the agent: hands (browser), loop (explore), runner
 suite/           seeded identities and mailbox access
 explorations/    the register; git history is the append-only log
 products/        a name and a URL per product
-mcp/             read-only MCP server agents query
-site/            static site humans read
+mcp/             registry.ts reading rules, tools.ts answers, stdio + http transports
+site/            static site, plus llms.txt and index.json for machines
 ```
 
 ## Status
@@ -67,9 +100,14 @@ Early. No product has paid for an account here.
 
 ```bash
 bun test                                   # the reading rules and mailbox behaviour
-bun run agent/run.ts --product <slug>      # needs ANTHROPIC_API_KEY and a browser
-bun run site/build.ts                      # render the register
+bun run explore --product <slug>           # needs ANTHROPIC_API_KEY or OPENAI_API_KEY, and a browser
+bun run site                               # render the register, llms.txt and index.json
+bun run mcp:http                           # the remote endpoint
 ```
+
+Set `SOFTRUTH_MCP_URL` (a repo variable in CI) once the endpoint is deployed;
+until then `llms.txt` advertises no MCP address, because a URL that does not
+answer teaches a reading agent the register is broken.
 
 The agent needs Chromium, which Playwright does not support on macOS 12; it runs
 in CI. See `docs/what-went-wrong.md` for the rule that governs changes to this

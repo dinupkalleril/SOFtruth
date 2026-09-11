@@ -54,6 +54,37 @@ export interface LoadOptions {
 }
 
 /**
+ * Shape raw records into the per-product view, newest first.
+ *
+ * Pure, so the local server reading files off disk and the remote server fetching
+ * them over HTTP produce identical results. If those two could diverge, an agent
+ * would get different answers depending on how it happened to connect.
+ */
+export function toProductRecords(
+  records: ExplorationRecord[],
+  options: { freshnessWindowDays?: number; now?: () => number } = {},
+): ProductRecord[] {
+  const windowDays = options.freshnessWindowDays ?? DEFAULT_FRESHNESS_WINDOW_DAYS;
+  const now = options.now ?? Date.now;
+
+  const newestPerProduct = new Map<string, ExplorationRecord>();
+  for (const record of records) {
+    const finished = Date.parse(record.finishedAt);
+    if (Number.isNaN(finished)) continue;
+
+    const existing = newestPerProduct.get(record.product.slug);
+    if (!existing || Date.parse(existing.finishedAt) < finished) {
+      newestPerProduct.set(record.product.slug, record);
+    }
+  }
+
+  return [...newestPerProduct.entries()].map(([slug, latest]) => {
+    const ageDays = (now() - Date.parse(latest.finishedAt)) / 86_400_000;
+    return { slug, latest, ageDays, stale: ageDays > windowDays };
+  });
+}
+
+/**
  * Load the newest account per product.
  *
  * A missing directory yields an empty list rather than an error: an empty
