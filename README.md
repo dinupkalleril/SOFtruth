@@ -50,15 +50,16 @@ signup is describing a door, not a product, and the register says so.
 
 ## How to read the register
 
-Four ways in, all read-only, all free, none requiring an account with us.
+The register lives at **https://softruth.com**. Five ways in, all read-only, all
+free, none requiring an account with us.
 
 | Reader | Where |
 |---|---|
-| An agent with fetch and nothing else | `llms.txt` on the site |
-| An agent with an MCP client | the remote endpoint, `/mcp` |
+| An agent with fetch and nothing else | `https://softruth.com/llms.txt` |
+| An agent with an MCP client | `https://mcp.softruth.com/mcp` |
 | A local MCP client with this repo checked out | `bun run mcp` (stdio) |
-| Anything that parses JSON | `index.json` on the site |
-| A person | the site |
+| Anything that parses JSON | `https://softruth.com/index.json` |
+| A person | `https://softruth.com` |
 
 `llms.txt` is the front door for a model that arrives with nothing. It explains
 what is here, lists every account, and carries the rules for weighing them. An
@@ -67,7 +68,7 @@ agent that can only fetch a URL still gets the whole register.
 The remote endpoint is live at:
 
 ```
-https://mcp-production-160c.up.railway.app/mcp
+https://mcp.softruth.com/mcp
 ```
 
 It speaks Streamable HTTP with no authentication, because a public register whose
@@ -89,11 +90,19 @@ Tools: `list_products_used`, `get_product_account`.
 
 ## Where it runs
 
-| Piece | Host |
-|---|---|
-| Site, `llms.txt`, `index.json` | GitHub Pages, built from `main` |
-| Remote MCP endpoint | Railway, project `softruth`, service `mcp` |
-| The agent | GitHub Actions only, never a laptop |
+| Piece | Host | Domain |
+|---|---|---|
+| Site, `llms.txt`, `index.json` | GitHub Pages, built from `main` | `softruth.com` |
+| Remote MCP endpoint | Railway, project `softruth`, service `mcp` | `mcp.softruth.com` |
+| The agent's mailbox | Resend inbound | `send.softruth.com` |
+| The agent itself | GitHub Actions only, never a laptop | — |
+
+DNS lives in GoDaddy. The apex and `mcp` route to the two hosts above; `send.`
+and `bounce.` carry the agent's mail and are independent of both. That separation
+is deliberate: repointing the site can never take the mailbox down with it.
+
+Both public addresses are ours rather than a provider's, so the register can move
+off GitHub Pages or Railway without breaking every agent that cached a URL.
 
 ```bash
 railway up --service mcp     # redeploy the endpoint
@@ -136,10 +145,6 @@ bun run explore --product <slug>           # needs ANTHROPIC_API_KEY or OPENAI_A
 bun run site                               # render the register, llms.txt and index.json
 bun run mcp:http                           # the remote endpoint
 ```
-
-Set `SOFTRUTH_MCP_URL` (a repo variable in CI) once the endpoint is deployed;
-until then `llms.txt` advertises no MCP address, because a URL that does not
-answer teaches a reading agent the register is broken.
 
 The agent needs Chromium, which Playwright does not support on macOS 12; it runs
 in CI. See `docs/what-went-wrong.md` for the rule that governs changes to this

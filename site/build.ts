@@ -31,7 +31,13 @@ function arg(name: string, fallback: string): string {
 const OUT_DIR = arg("out", "site/dist");
 const EXPLORATIONS_DIR = arg("explorations", "explorations");
 const WINDOW_DAYS = Number(arg("window", String(DEFAULT_FRESHNESS_WINDOW_DAYS)));
-const BASE_URL = arg("base", "https://dinupkalleril.github.io/SOFtruth").replace(/\/+$/, "");
+const BASE_URL = arg("base", "https://softruth.com").replace(/\/+$/, "");
+/**
+ * Written into the build output because that is what makes GitHub Pages serve
+ * the custom domain. Losing this file silently moves the whole register back to
+ * a github.io path, breaking every link an agent has already read.
+ */
+const CUSTOM_DOMAIN = new URL(BASE_URL).hostname;
 /**
  * Only advertised once something is actually listening. A URL in llms.txt that
  * does not answer is worse than no URL: an agent that tries it and fails learns
@@ -356,6 +362,7 @@ async function main(): Promise<void> {
   await writeFile(join(OUT_DIR, "index.json"), renderIndexJson(records), "utf-8");
   await writeFile(join(OUT_DIR, "llms.txt"), renderLlmsTxt(records), "utf-8");
 
+  await writeFile(join(OUT_DIR, "CNAME"), `${CUSTOM_DOMAIN}\n`, "utf-8");
   await writeFile(join(OUT_DIR, ".nojekyll"), "", "utf-8");
   console.log(
     `built ${OUT_DIR}: index + ${records.length} product page(s) + index.json + llms.txt` +

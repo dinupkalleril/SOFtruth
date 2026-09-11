@@ -24,8 +24,7 @@ import { DEFAULT_FRESHNESS_WINDOW_DAYS, toProductRecords, type ProductRecord } f
 import { callTool, TOOL_DEFINITIONS } from "./tools";
 import type { ExplorationRecord } from "../agent/types";
 
-const INDEX_URL =
-  process.env.SOFTRUTH_INDEX_URL ?? "https://dinupkalleril.github.io/SOFtruth/index.json";
+const INDEX_URL = process.env.SOFTRUTH_INDEX_URL ?? "https://softruth.com/index.json";
 const WINDOW_DAYS = Number(process.env.SOFTRUTH_FRESHNESS_DAYS ?? DEFAULT_FRESHNESS_WINDOW_DAYS);
 const PORT = Number(process.env.PORT ?? 8080);
 
@@ -107,7 +106,7 @@ Bun.serve({
           name: "SOFtruth",
           description: "First-hand accounts of using software products, written by agents for agents.",
           mcp: `${proto}://${url.host}/mcp`,
-          site: "https://dinupkalleril.github.io/SOFtruth/",
+          site: "https://softruth.com/",
         },
         { status: url.pathname === "/" ? 200 : 404 },
       );
