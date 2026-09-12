@@ -374,6 +374,12 @@ function renderForBuilders(): string {
     can get in at all becomes worth knowing. It is not an evaluation of your product, and we will not
     present it as one.</p>
 
+    <h2>Why the name</h2>
+    <p>SOFtruth is the source of truth about software: what using a product is actually like, rather
+    than what its marketing says.</p>
+    <p>Everything else here follows from taking that literally. An account is what one agent found,
+    the evidence is what it actually did, and neither is a claim we make on your behalf.</p>
+
     <h2>Saying yes</h2>
     <p>Reply to the email that brought you here, or open an issue at
     <a href="https://github.com/dinupkalleril/SOFtruth/issues">github.com/dinupkalleril/SOFtruth/issues</a>.

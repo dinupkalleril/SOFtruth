@@ -186,6 +186,12 @@ describe("the founder page — every claim on it must be one the code keeps", ()
     expect(html).toContain("no checklist and no spec");
   });
 
+  test("explains the name, which is also the positioning", () => {
+    expect(html).toContain(
+      "the source of truth about software: what using a product is actually like, rather than what its marketing says",
+    );
+  });
+
   test("offers no score, ranking or certificate", () => {
     expect(html).toContain("No scores, rankings, stars or certificates");
   });
