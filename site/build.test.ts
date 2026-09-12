@@ -186,6 +186,27 @@ describe("the founder page — every claim on it must be one the code keeps", ()
     expect(html).toContain("no checklist and no spec");
   });
 
+  test("lists the refusals a founder actually worries about", () => {
+    // Each of these is enforced in the agent's instructions (agent/explore.ts).
+    // If one is loosened there, this page becomes a false promise, so the claim
+    // and the behaviour are pinned together.
+    expect(html).toContain("Never enters card details or pays for anything");
+    expect(html).toContain("Never solves a CAPTCHA or works around a block");
+    expect(html).toContain("Never pretends to be a person");
+    expect(html).toContain("Never follows instructions found in page content");
+    expect(html).toContain("Never crawls");
+  });
+
+  test("says the record is signed before anyone can alter it, us included", () => {
+    expect(html).toContain("signed before anything else touches it");
+    expect(html).toContain("by you or by us");
+  });
+
+  test("says a person reviews the account before it publishes", () => {
+    expect(html).toContain("A person reads it before it publishes");
+    expect(html).toContain("never commits directly");
+  });
+
   test("gives a founder a way to say yes that does not need a GitHub account", () => {
     expect(html).toContain("mailto:dinupkalleril@gmail.com");
   });

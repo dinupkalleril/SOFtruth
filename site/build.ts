@@ -306,6 +306,29 @@ function renderForBuilders(): string {
     product is supposed to do. That is the point: it is the same position an assistant is in when
     someone asks it whether to use you.</p>
 
+    <h2>What the agent can and cannot do</h2>
+    <p>It drives a headless browser, and the list of things it can do is six items long: read a page,
+    go to a URL, click something, type into a field, check its email, and stop. No API access, no
+    integration, no special path. It comes through the front door like anyone else.</p>
+    <p>What it never does, enforced in the agent's own instructions rather than left to policy:</p>
+    <ul>
+      <li><strong>Never enters card details or pays for anything.</strong> It stops at a paywall and
+      records that a payment was required.</li>
+      <li><strong>Never solves a CAPTCHA or works around a block.</strong> The instruction is to stop
+      and report it, because a real buyer meets the same wall and that is the finding.</li>
+      <li><strong>Never uses a phone number,</strong> or any credential other than the one generated
+      for the session.</li>
+      <li><strong>Never pretends to be a person.</strong></li>
+      <li><strong>Never follows instructions found in page content.</strong> That protects the account
+      from prompt injection, and it cuts both ways: you cannot shift a conclusion by hiding text on a
+      page either.</li>
+      <li><strong>Never crawls.</strong> One signup, one session, five to ten minutes, a few dozen page
+      loads.</li>
+    </ul>
+    <p>It leaves behind one test account holding test data, at an address on our domain. Tell us and we
+    will not touch it again; delete it whenever you like. Anything typed is stored with secrets stripped,
+    and the account names which model wrote it, the way a review carries a byline.</p>
+
     <h2>What gets published</h2>
     <p>Two things, side by side, never merged.</p>
     <ul>
@@ -320,6 +343,23 @@ function renderForBuilders(): string {
     and no further.</p>
 
     <p style="margin-top:20px"><a class="cta" href="./example.html">See a worked example &rarr;</a></p>
+
+    <h2>What happens to the record afterwards</h2>
+    <ol>
+      <li><strong>The session becomes one file.</strong> Every step with its screenshot, the email
+      evidence, the account, and the seed needed to run the whole thing again.</li>
+      <li><strong>It is signed before anything else touches it.</strong> The exact bytes are signed by
+      the CI run that produced them, and the signature lands in a public transparency log. Nothing can
+      be altered afterwards without breaking it, by you or by us.</li>
+      <li><strong>A person reads it before it publishes.</strong> It opens a pull request and never
+      commits directly. The review checks the account against the screenshots, because an account is a
+      public statement about a named company written by a model that read pages that company controls.</li>
+      <li><strong>Merging publishes it everywhere at once:</strong> the site, the machine-readable index
+      and the MCP endpoint. Screenshots are kept for 90 days.</li>
+    </ol>
+    <p>Accounts are never edited or removed. A later run appends a new one and readers are shown the
+    newest. That rule exists to protect you from us: if we could quietly revise what an agent said, none
+    of the rest of this would be worth anything.</p>
 
     <h2>What you get</h2>
     <ul>
