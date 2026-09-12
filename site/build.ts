@@ -381,9 +381,10 @@ function renderForBuilders(): string {
     the evidence is what it actually did, and neither is a claim we make on your behalf.</p>
 
     <h2>Saying yes</h2>
-    <p>Reply to the email that brought you here, or open an issue at
-    <a href="https://github.com/dinupkalleril/SOFtruth/issues">github.com/dinupkalleril/SOFtruth/issues</a>.
-    Send a name and a URL and we will send you the record before anything is published.</p>`,
+    <p>Email <a href="mailto:dinupkalleril@gmail.com?subject=SOFtruth%3A%20run%20an%20agent%20on%20my%20product">dinupkalleril@gmail.com</a>
+    with a name and a URL. That is the whole thing. You get the record before anything is published.</p>
+    <p>If you would rather do it in the open, open an issue at
+    <a href="https://github.com/dinupkalleril/SOFtruth/issues">github.com/dinupkalleril/SOFtruth/issues</a>.</p>`,
   );
 }
 
