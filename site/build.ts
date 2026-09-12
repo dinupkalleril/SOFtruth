@@ -54,37 +54,74 @@ export function esc(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Monochrome on purpose.
+ *
+ * This is a record, not a dashboard, and it should read like documentation:
+ * hierarchy from type and rules rather than from colour. Colour-coded verdicts
+ * would also quietly undo the thing the register is careful about, because a red
+ * badge is a judgement and half the accounts here are explicitly not judgements.
+ * Emphasis comes from weight and rule thickness, and the meaning is always
+ * carried by the words.
+ */
 const CSS = `
-:root { --fg:#16181d; --muted:#6b7280; --line:#e5e7eb; --bg:#fff; --accent:#0f7b3d; --warn:#8a6d1f; --bad:#b42318; }
+:root {
+  --bg:#fff; --fg:#14151a; --muted:#6e7178; --line:#e4e5e9; --rule:#c7c9cf; --tint:#f7f7f8;
+}
 @media (prefers-color-scheme: dark) {
-  :root { --fg:#e8eaed; --muted:#9aa3af; --line:#2b2f36; --bg:#111317; --accent:#4ade80; --warn:#fbbf24; --bad:#f87171; }
+  :root { --bg:#0e0f12; --fg:#e9eaed; --muted:#979aa2; --line:#252730; --rule:#3d4049; --tint:#15171c; }
 }
 * { box-sizing:border-box }
+html { -webkit-text-size-adjust:100% }
 body { margin:0; background:var(--bg); color:var(--fg);
-       font:15.5px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-.wrap { max-width:760px; margin:0 auto; padding:44px 20px 90px }
-h1 { font-size:23px; margin:0 0 6px; letter-spacing:-0.01em }
-h2 { font-size:15px; margin:34px 0 10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted) }
-.sub { color:var(--muted); margin:0 0 30px }
-a { color:inherit }
-.card { border:1px solid var(--line); border-radius:8px; padding:18px 20px; margin:0 0 14px }
-.card h3 { margin:0 0 4px; font-size:17px }
-.card .meta { color:var(--muted); font-size:13.5px; margin:0 0 10px }
-.bottom { font-size:16px; margin:0 }
-.guide { border-left:3px solid var(--line); padding:9px 14px; margin:16px 0; color:var(--muted); font-size:14px }
-.guide.warn { border-left-color:var(--warn) }
-.guide.bad { border-left-color:var(--bad) }
-ul, ol { margin:6px 0 0; padding-left:20px } li { margin:3px 0 }
-p + ul, p + ol { margin-top:8px }
-.cta { display:inline-block; border:1px solid var(--line); border-radius:8px; padding:10px 16px;
-       margin:6px 0 0; text-decoration:none; font-size:14.5px }
-.cta:hover { border-color:var(--fg) }
-.evidence { background:color-mix(in srgb, var(--line) 25%, transparent); border-radius:8px; padding:16px 20px; font-size:14px }
-.evidence dl { display:grid; grid-template-columns:auto 1fr; gap:5px 16px; margin:0 }
-.evidence dt { color:var(--muted) } .evidence dd { margin:0 }
-code { font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted); word-break:break-all }
-.empty { border:1px dashed var(--line); padding:30px; text-align:center; color:var(--muted); border-radius:8px }
-footer { margin-top:60px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:13px }
+       font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased; }
+.wrap { max-width:720px; margin:0 auto; padding:0 22px 96px }
+
+.masthead { display:flex; align-items:baseline; gap:20px; flex-wrap:wrap;
+            padding:26px 0 20px; margin:0 0 40px; border-bottom:1px solid var(--line) }
+.masthead .wordmark { font-size:15px; font-weight:650; letter-spacing:-.015em; text-decoration:none }
+.masthead nav { margin-left:auto; display:flex; gap:20px }
+.masthead nav a { color:var(--muted); font-size:13.5px; text-decoration:none }
+.masthead nav a:hover { color:var(--fg) }
+
+h1 { font-size:27px; line-height:1.25; font-weight:640; letter-spacing:-.021em; margin:0 0 10px }
+h2 { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--muted);
+     margin:44px 0 14px; padding-top:15px; border-top:1px solid var(--line) }
+h3 { font-size:17px; font-weight:600; letter-spacing:-.01em; margin:0 0 4px }
+p { margin:0 0 14px }
+.sub { color:var(--muted); margin:0 0 34px }
+a { color:inherit; text-underline-offset:2px; text-decoration-color:var(--rule) }
+strong { font-weight:640 }
+ul, ol { margin:0 0 14px; padding-left:22px } li { margin:4px 0 }
+code { font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); word-break:break-word }
+
+.card { border:1px solid var(--line); border-radius:4px; padding:20px 22px; margin:0 0 12px }
+.card .meta { font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted); margin:0 0 12px }
+.bottom { font-size:16.5px; margin:0 }
+
+/* Weight, not hue. The sentence inside always states the reason in full. */
+.guide { border-left:2px solid var(--rule); padding:2px 0 2px 16px; margin:18px 0;
+         color:var(--muted); font-size:14.5px }
+.guide.warn { border-left-width:4px }
+.guide.bad { border-left-width:4px; border-left-color:var(--fg); color:var(--fg) }
+
+.cta { display:inline-block; border:1px solid var(--fg); border-radius:4px; padding:10px 18px;
+       text-decoration:none; font-size:14px; font-weight:550 }
+.cta:hover { background:var(--fg); color:var(--bg) }
+
+.notice { border:1px solid var(--fg); border-radius:4px; padding:17px 20px; margin:0 0 34px; font-size:14.5px }
+.notice .tag { display:block; font-size:11px; font-weight:650; text-transform:uppercase;
+               letter-spacing:.1em; margin:0 0 7px }
+.notice p:last-child { margin:0 }
+
+.evidence { background:var(--tint); border:1px solid var(--line); border-radius:4px; padding:18px 22px; font-size:14.5px }
+.evidence dl { display:grid; grid-template-columns:auto 1fr; gap:7px 20px; margin:0 }
+.evidence dt { color:var(--muted); font-size:13px } .evidence dd { margin:0 }
+
+.empty { border:1px dashed var(--rule); padding:34px 24px; text-align:center; color:var(--muted); border-radius:4px }
+.empty p:last-child { margin:0 }
+footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted); font-size:13px }
 `;
 
 function page(title: string, body: string): string {
@@ -92,7 +129,16 @@ function page(title: string, body: string): string {
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><style>${CSS}</style>
-</head><body><div class="wrap">${body}
+</head><body><div class="wrap">
+<header class="masthead">
+  <a class="wordmark" href="./index.html">SOFtruth</a>
+  <nav>
+    <a href="./index.html">Register</a>
+    <a href="./example.html">Example</a>
+    <a href="./for-builders.html">For builders</a>
+  </nav>
+</header>
+${body}
 <footer>
 An agent signs up for a product, uses it, and writes down what that was like. What it concluded is
 published next to the evidence of what it actually did, because a product's own pages can shape a
@@ -100,6 +146,127 @@ conclusion but cannot change whether an email arrived.
 <br><br>No product has paid for an account here.
 </footer>
 </div></body></html>`;
+}
+
+/**
+ * A worked example, so a founder can see the shape of what gets published
+ * before agreeing to anything.
+ *
+ * Stockroom is invented. It uses the reserved `.example` TLD so it can never
+ * collide with a real company, and the page says what it is three times over.
+ * The alternative was running an agent at a real product nobody asked us to
+ * touch, which would have broken the "nothing is tried unless you ask us to"
+ * promise on the page this example exists to support.
+ *
+ * It is rendered through the real renderAccount, not a mockup. If the renderer
+ * changes, the example changes with it, and a founder cannot be shown a layout
+ * that no longer matches what they would get.
+ *
+ * The account is deliberately mixed: a working core loop, a real failure, three
+ * claims it could not check, and a confidence of 7 rather than 10. A flawless
+ * example would advertise a register that flatters, which is the opposite of
+ * what is being sold here. It also carries no CI provenance, so the page marks
+ * it as not evidence, which demonstrates the mechanism working rather than
+ * hiding it.
+ */
+const EXAMPLE_RECORD: ExplorationRecord = {
+  schemaVersion: "softruth/exploration/v1",
+  product: { slug: "example-stockroom", name: "Stockroom", url: "https://stockroom.example" },
+  seed: "0e9c1a7f4b2d88c3",
+  inboxDomain: "send.softruth.com",
+  startedAt: "2026-09-12T09:14:02.000Z",
+  finishedAt: "2026-09-12T09:20:14.000Z",
+  evidence: {
+    steps: [
+      { index: 1, intent: "open the product's front page", url: "https://stockroom.example/",
+        observed: { httpStatus: 200, pageTitle: "Stockroom — inventory for small warehouses", screenshot: "01-landing.png" },
+        startedAt: "2026-09-12T09:14:02.000Z", elapsedMs: 1840 },
+      { index: 2, intent: "submit the signup form", url: "https://stockroom.example/signup",
+        observed: { httpStatus: 200, pageTitle: "Check your email", screenshot: "02-signup.png",
+          input: { email: "agent-0e9c1a@send.softruth.com", password: "[redacted]" } },
+        startedAt: "2026-09-12T09:14:31.000Z", elapsedMs: 2210 },
+      { index: 3, intent: "follow the verification link from the mailbox", url: "https://stockroom.example/verify",
+        observed: { httpStatus: 200, pageTitle: "Create your first location", screenshot: "03-verified.png" },
+        startedAt: "2026-09-12T09:14:58.000Z", elapsedMs: 1605 },
+      { index: 4, intent: "add an item before creating a location", url: "https://stockroom.example/items/new",
+        observed: { httpStatus: 200, screenshot: "04-item-blocked.png", errorText: "Select a location first" },
+        startedAt: "2026-09-12T09:15:40.000Z", elapsedMs: 1290 },
+      { index: 5, intent: "create a location, then add an item with a reorder threshold", url: "https://stockroom.example/items/new",
+        observed: { httpStatus: 200, pageTitle: "SKU-4411 added", screenshot: "05-item-added.png",
+          input: { sku: "SKU-4411", quantity: "0", threshold: "10" } },
+        startedAt: "2026-09-12T09:16:22.000Z", elapsedMs: 3040 },
+      { index: 6, intent: "record an inbound shipment of 40 units", url: "https://stockroom.example/movements/new",
+        observed: { httpStatus: 200, pageTitle: "Stock on hand: 40", screenshot: "06-inbound.png" },
+        startedAt: "2026-09-12T09:17:35.000Z", elapsedMs: 2480 },
+      { index: 7, intent: "import the product's own sample CSV template", url: "https://stockroom.example/import",
+        observed: { httpStatus: 400, screenshot: "07-import-failed.png", errorText: "row 1 invalid" },
+        startedAt: "2026-09-12T09:18:49.000Z", elapsedMs: 4120 },
+    ],
+    email: {
+      address: "agent-0e9c1a@send.softruth.com",
+      nonce: "0e9c1a7f",
+      arrived: true,
+      secondsToArrive: 14,
+      subject: "Confirm your Stockroom account",
+    },
+    totalSeconds: 372,
+  },
+  account: {
+    couldSignUp: true,
+    couldUseCoreFeature: true,
+    whatItDoes:
+      "Tracks stock levels across warehouse locations. You add items with a SKU and a reorder threshold, " +
+      "record what arrives and what ships, and it keeps a running count per location and flags anything " +
+      "that drops below the threshold.",
+    gettingStarted:
+      "Signup was three fields and a verification email that arrived in 14 seconds. The screen after " +
+      "verification asked for a location before anything else was possible, which was not explained, and " +
+      "I lost an attempt trying to add an item first: items belong to a location rather than to the " +
+      "account, and nothing says so until the form rejects you.",
+    worked: [
+      "Created a location and added an item with a SKU, quantity and reorder threshold",
+      "Recorded an inbound shipment of 40 units; the location count updated immediately",
+      "Shipped 35 units out and the item was flagged on the dashboard against its threshold of 10",
+    ],
+    didNotWork: [
+      "CSV import rejected a file exported from the product's own sample template, with the error 'row 1 invalid' and no indication of which column",
+      "On a narrow viewport the quantity field sat under the on-screen keyboard, so recording a shipment needed scrolling mid-entry",
+    ],
+    unverifiedClaims: [
+      "Shopify and QuickBooks integrations, both of which need a real account on those services to connect",
+      "Multi-user roles and permissions, which require a second seat on a paid plan",
+      "'Real-time sync across locations' — only one location held stock during this session, so nothing was exercised",
+    ],
+    bottomLine:
+      "An agent can sign up and run the core stock-tracking loop in about six minutes, but CSV import " +
+      "failed on the product's own template, so suggest it for manual entry rather than bulk migration " +
+      "until that is checked.",
+    confidence: 7,
+    confidenceReason:
+      "Signed up and completed the main loop end to end, but exercised only one location and could not " +
+      "test any integration, so this covers the basics rather than the product as a whole.",
+  },
+  agent: { model: "claude-sonnet-5", readPageContent: true },
+};
+
+function renderExample(): string {
+  const record: ProductRecord = {
+    slug: EXAMPLE_RECORD.product.slug,
+    latest: EXAMPLE_RECORD,
+    ageDays: 0,
+    stale: false,
+  };
+
+  const notice = `<div class="notice">
+    <span class="tag">Illustration, not a register entry</span>
+    <p><strong>Stockroom is not a real product and no agent has used it.</strong> This page exists so you
+    can see the shape of what gets published before agreeing to anything. Nothing here is in the register,
+    in <code>index.json</code>, or reachable through the MCP endpoint.</p>
+    <p>Because it is not a real run it carries no CI provenance, and the evidence section below says so
+    rather than quietly omitting it. A real account links to the workflow run that produced it.</p>
+  </div>`;
+
+  return renderAccount(record, [EXAMPLE_RECORD], notice);
 }
 
 /**
@@ -151,6 +318,8 @@ function renderForBuilders(): string {
     conclusion. An agent reading them can be influenced. It cannot be influenced into an email
     arriving. Publishing both lets a reader trust the account as far as the evidence carries it,
     and no further.</p>
+
+    <p style="margin-top:20px"><a class="cta" href="./example.html">See a worked example &rarr;</a></p>
 
     <h2>What you get</h2>
     <ul>
@@ -260,7 +429,7 @@ function renderIndex(records: ProductRecord[]): string {
   );
 }
 
-function renderAccount(record: ProductRecord, history: ExplorationRecord[]): string {
+function renderAccount(record: ProductRecord, history: ExplorationRecord[], notice = ""): string {
   const { latest } = record;
   const { account, evidence, agent } = latest;
 
@@ -276,7 +445,7 @@ function renderAccount(record: ProductRecord, history: ExplorationRecord[]): str
 
   return page(
     `${latest.product.name} — SOFtruth`,
-    `<p class="sub"><a href="./index.html">← all products</a></p>
+    `${notice}
     <h1>${esc(latest.product.name)}</h1>
     <p class="sub"><a href="${esc(latest.product.url)}">${esc(latest.product.url)}</a> · used by
        ${esc(agent.model)} on ${esc(latest.finishedAt.slice(0, 10))}</p>
@@ -469,6 +638,7 @@ async function main(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
   await writeFile(join(OUT_DIR, "index.html"), renderIndex(records), "utf-8");
   await writeFile(join(OUT_DIR, "for-builders.html"), renderForBuilders(), "utf-8");
+  await writeFile(join(OUT_DIR, "example.html"), renderExample(), "utf-8");
 
   for (const record of records) {
     const history = await loadProductHistory(record.slug, { explorationsDir: EXPLORATIONS_DIR });
@@ -482,11 +652,11 @@ async function main(): Promise<void> {
   await writeFile(join(OUT_DIR, "CNAME"), `${CUSTOM_DOMAIN}\n`, "utf-8");
   await writeFile(join(OUT_DIR, ".nojekyll"), "", "utf-8");
   console.log(
-    `built ${OUT_DIR}: index + ${records.length} product page(s) + index.json + llms.txt` +
+    `built ${OUT_DIR}: index + for-builders + example + ${records.length} product page(s) + index.json + llms.txt` +
       (MCP_URL ? ` (MCP ${MCP_URL})` : " (no MCP endpoint advertised)"),
   );
 }
 
 if (import.meta.main) await main();
 
-export { renderIndex, renderAccount, renderIndexJson, renderLlmsTxt, renderForBuilders };
+export { renderIndex, renderAccount, renderIndexJson, renderLlmsTxt, renderForBuilders, renderExample };

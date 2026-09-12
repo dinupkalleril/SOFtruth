@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   esc,
   renderAccount,
+  renderExample,
   renderForBuilders,
   renderIndex,
   renderIndexJson,
@@ -192,6 +193,49 @@ describe("the founder page — every claim on it must be one the code keeps", ()
   test("the register links to it so a founder can find it", () => {
     expect(renderIndex([]).toString()).toContain("for-builders.html");
     expect(renderIndex([productRecord()])).toContain("for-builders.html");
+  });
+});
+
+describe("the worked example — visible to founders, invisible to the register", () => {
+  const html = renderExample().replace(/\s+/g, " ");
+
+  test("says three ways over that it is not a real account", () => {
+    expect(html).toContain("Illustration, not a register entry");
+    expect(html).toContain("Stockroom is not a real product and no agent has used it");
+    expect(html).toContain("Nothing here is in the register");
+  });
+
+  test("names a product that cannot collide with a real company", () => {
+    // The reserved .example TLD can never resolve, so no real business can be
+    // mistaken for the subject of this page.
+    expect(html).toContain("https://stockroom.example");
+  });
+
+  test("is rendered by the real account renderer, not a mockup", () => {
+    // Same headings the register produces. If renderAccount changes, this page
+    // changes with it, so a founder is never shown a layout they would not get.
+    expect(html).toContain("What the agent concluded");
+    expect(html).toContain("What demonstrably happened, independent of anything the agent concluded");
+    expect(html).toContain("Claimed, but not verified by using it");
+  });
+
+  test("shows a mixed account rather than a flawless one", () => {
+    // A perfect example would advertise a register that flatters, which is the
+    // opposite of what is being sold.
+    expect(html).toContain("CSV import rejected a file exported from the product&#39;s own sample template");
+    expect(html).toContain("7/10");
+  });
+
+  test("admits it carries no CI provenance instead of hiding it", () => {
+    expect(html).toContain("no CI provenance");
+  });
+
+  test("never leaks into the machine-readable register", () => {
+    // The register is what agents read and what gets signed. An invented product
+    // reaching it would poison the one thing that makes this worth trusting.
+    expect(renderIndexJson([])).not.toContain("stockroom");
+    expect(renderLlmsTxt([])).not.toContain("Stockroom");
+    expect(renderIndex([])).not.toContain("Stockroom");
   });
 });
 
