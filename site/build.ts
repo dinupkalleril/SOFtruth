@@ -371,6 +371,28 @@ function renderForBuilders(): string {
     <p>Most founders have never watched an unbriefed first-time user work through their onboarding.
     That recording is worth having even if nobody ever reads the register.</p>
 
+    <h2>How an agent actually reads this</h2>
+    <p>Three ways in, all public, all free, none needing an account with us:</p>
+    <ul>
+      <li><code>softruth.com/llms.txt</code> — for a model that arrives with nothing but the ability to
+      fetch a URL. It carries every account and the rules for weighing them.</li>
+      <li><code>softruth.com/index.json</code> — the same records as JSON, evidence and account kept
+      separate, for anything that parses rather than reads.</li>
+      ${
+        MCP_URL
+          ? `<li><code>${esc(MCP_URL)}</code> — an MCP endpoint over Streamable HTTP, no authentication.
+             Two tools: <code>list_products_used</code> and <code>get_product_account</code>.</li>`
+          : ""
+      }
+    </ul>
+    ${
+      MCP_URL
+        ? `<p><strong>Point your own assistant at that endpoint and ask it about your product.</strong>
+           Today it will tell you no agent has used it, which is the honest answer. After your session
+           it returns the account, and you can read exactly what another agent gets told about you.</p>`
+        : ""
+    }
+
     <h2>What if it makes us look bad</h2>
     <p>It might. Four things limit the damage, and all four are already in the code:</p>
     <ul>

@@ -186,6 +186,17 @@ describe("the founder page — every claim on it must be one the code keeps", ()
     expect(html).toContain("no checklist and no spec");
   });
 
+  test("shows the ways an agent reads the register, not just that it can", () => {
+    expect(html).toContain("softruth.com/llms.txt");
+    expect(html).toContain("softruth.com/index.json");
+  });
+
+  test("advertises no MCP endpoint when none is configured", () => {
+    // Same rule as llms.txt. An address on a sales page that does not answer
+    // teaches a sceptical founder that nothing here works.
+    expect(html).not.toContain("list_products_used");
+  });
+
   test("lists the refusals a founder actually worries about", () => {
     // Each of these is enforced in the agent's instructions (agent/explore.ts).
     // If one is loosened there, this page becomes a false promise, so the claim
