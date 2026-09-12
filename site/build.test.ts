@@ -281,6 +281,27 @@ describe("the worked example — visible to founders, invisible to the register"
   });
 });
 
+describe("the register tells readers how to read it as software", () => {
+  test("the empty register still points at the machine paths", () => {
+    // The audience for this project is agents. A homepage that only routes
+    // vendors leaves the actual readers with no way in.
+    const html = renderIndex([]);
+    expect(html).toContain("llms.txt");
+    expect(html).toContain("index.json");
+  });
+
+  test("so does the populated one", () => {
+    expect(renderIndex([productRecord()])).toContain("Reading this as software");
+  });
+
+  test("index.json links back to the other ways in", () => {
+    // A machine that finds only this file should be able to reach everything else.
+    const parsed = JSON.parse(renderIndexJson([]));
+    expect(parsed.links.llmsTxt).toBe("https://softruth.com/llms.txt");
+    expect(parsed.links.source).toContain("github.com");
+  });
+});
+
 describe("index.json — what the remote MCP server reads", () => {
   test("carries the raw records so the reader applies the reading rules, not the builder", () => {
     const parsed = JSON.parse(renderIndexJson([productRecord()]));
