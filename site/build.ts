@@ -741,6 +741,7 @@ async function main(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
   await writeFile(join(OUT_DIR, "index.html"), renderIndex(records), "utf-8");
   await writeFile(join(OUT_DIR, "for-builders.html"), renderForBuilders(), "utf-8");
+  await writeFile(join(OUT_DIR, "builders.html"), renderForBuilders(), "utf-8");
   await writeFile(join(OUT_DIR, "example.html"), renderExample(), "utf-8");
 
   for (const record of records) {
